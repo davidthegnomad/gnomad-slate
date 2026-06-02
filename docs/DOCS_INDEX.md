@@ -21,6 +21,8 @@ npm run docs:export
 | Document | MD | HTML | TXT |
 |----------|----|------|-----|
 | **Project landing** | — | [index.html](index.html) | — |
+| **Project status** (current phase, health, next actions) | [STATUS.md](STATUS.md) | [STATUS.html](STATUS.html) | [STATUS.txt](STATUS.txt) |
+| **Roadmap** (v0.2+ priorities) | [ROADMAP.md](ROADMAP.md) | [ROADMAP.html](ROADMAP.html) | [ROADMAP.txt](ROADMAP.txt) |
 | README (project overview) | [../README.md](../README.md) | [../README.html](../README.html) | [../README.txt](../README.txt) |
 | **User Guide** | [USER_GUIDE.md](USER_GUIDE.md) | [USER_GUIDE.html](USER_GUIDE.html) | [USER_GUIDE.txt](USER_GUIDE.txt) |
 | **Vault & password security** | [VAULT_SECURITY.md](VAULT_SECURITY.md) | [VAULT_SECURITY.html](VAULT_SECURITY.html) | [VAULT_SECURITY.txt](VAULT_SECURITY.txt) |
@@ -38,6 +40,7 @@ npm run docs:export
 | Security Model (app-wide) | [SECURITY_MODEL.md](SECURITY_MODEL.md) | [SECURITY_MODEL.html](SECURITY_MODEL.html) | [SECURITY_MODEL.txt](SECURITY_MODEL.txt) |
 | **Vault & Password Security** | [VAULT_SECURITY.md](VAULT_SECURITY.md) | [VAULT_SECURITY.html](VAULT_SECURITY.html) | [VAULT_SECURITY.txt](VAULT_SECURITY.txt) |
 | Privacy | [PRIVACY.md](PRIVACY.md) | [PRIVACY.html](PRIVACY.html) | [PRIVACY.txt](PRIVACY.txt) |
+| Project status | [STATUS.md](STATUS.md) | [STATUS.html](STATUS.html) | [STATUS.txt](STATUS.txt) |
 | Roadmap | [ROADMAP.md](ROADMAP.md) | [ROADMAP.html](ROADMAP.html) | [ROADMAP.txt](ROADMAP.txt) |
 | Release runbook | [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) | [RELEASE_RUNBOOK.html](RELEASE_RUNBOOK.html) | [RELEASE_RUNBOOK.txt](RELEASE_RUNBOOK.txt) |
 | Troubleshooting | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | [TROUBLESHOOTING.html](TROUBLESHOOTING.html) | [TROUBLESHOOTING.txt](TROUBLESHOOTING.txt) |

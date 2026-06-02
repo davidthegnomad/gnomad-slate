@@ -11,6 +11,8 @@ Built with ❤️ by [Gnomad Studio](https://gnomadstudio.org) 🦙
 
 **Repository:** [github.com/davidthegnomad/gnomad-slate](https://github.com/davidthegnomad/gnomad-slate)
 
+**Status & roadmap:** [`docs/STATUS.md`](docs/STATUS.md) · [`docs/ROADMAP.md`](docs/ROADMAP.md)
+
 ---
 
 ## Why this exists
@@ -80,6 +82,8 @@ All docs ship as **Markdown**, **HTML**, and **TXT**. Full index: [`docs/DOCS_IN
 
 | Document | MD | HTML |
 |----------|----|------|
+| **Project status** | [docs/STATUS.md](docs/STATUS.md) | [docs/STATUS.html](docs/STATUS.html) |
+| **Roadmap** | [docs/ROADMAP.md](docs/ROADMAP.md) | [docs/ROADMAP.html](docs/ROADMAP.html) |
 | **All docs** | [docs/DOCS_INDEX.md](docs/DOCS_INDEX.md) | [docs/DOCS_INDEX.html](docs/DOCS_INDEX.html) |
 | **Project site** | — | [docs/index.html](docs/index.html) |
 | User Guide | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | [docs/USER_GUIDE.html](docs/USER_GUIDE.html) |

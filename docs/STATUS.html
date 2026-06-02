@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project Status — Gnomad Slate</title>
+  <meta name="description" content="Project Status documentation for Gnomad Slate." />
+  <style>:root {
+  --bg-base: #0d1117;
+  --bg-panel: rgba(22, 27, 34, 0.95);
+  --bg-elevated: rgba(33, 38, 45, 0.98);
+  --border: rgba(48, 54, 61, 0.9);
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #818cf8;
+  --accent-secondary: #c084fc;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --pill-radius: 999px;
+  --radius: 12px;
+  --mesh:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.18), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 10% 30%, rgba(192, 132, 252, 0.1), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 95% 40%, rgba(129, 140, 248, 0.08), transparent 50%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg-base);
+  min-height: 100vh;
+}
+
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--mesh);
+  z-index: 0;
+}
+
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 1.5rem 1.25rem;
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.brand-icon { font-size: 1.5rem; }
+.brand h1 { font-size: 1rem; font-weight: 600; }
+
+.doc-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  word-break: break-all;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar a.toc-h3 { padding-left: 1.1rem; font-size: 0.78rem; }
+.sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.sidebar a.active { color: var(--accent); background: rgba(129, 140, 248, 0.12); }
+
+.content {
+  padding: 2rem 2.5rem 3rem;
+  max-width: 760px;
+}
+
+.hero { margin-bottom: 1.5rem; }
+.hero h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.formats { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+.formats a { color: var(--accent); }
+
+.doc-body h1 { font-size: 1.5rem; margin: 1.5rem 0 0.75rem; }
+.doc-body h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.doc-body h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; color: var(--accent); }
+.doc-body h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+
+.doc-body p { margin-bottom: 0.85rem; }
+.doc-body ul, .doc-body ol { margin: 0 0 1rem 1.25rem; color: var(--muted); }
+.doc-body li { margin-bottom: 0.35rem; }
+.doc-body li strong { color: var(--text); }
+
+.doc-body a { color: var(--accent); }
+.doc-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(255,255,255,0.08);
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  color: var(--accent-secondary);
+}
+
+.doc-body pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.doc-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 1rem 0;
+}
+
+.doc-body th, .doc-body td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-body th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.6rem 1rem;
+  margin: 1rem 0;
+  background: rgba(129, 140, 248, 0.08);
+  border-radius: 0 12px 12px 0;
+  color: var(--muted);
+}
+
+.doc-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.doc-footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.doc-footer a { color: var(--accent); text-decoration: none; }
+.doc-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="mesh-bg" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+          <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
+          <p class="doc-path">docs/STATUS.md</p>
+          <a href="#at-a-glance" class="toc-h2">At a glance</a>
+<a href="#current-phase" class="toc-h2">Current phase</a>
+<a href="#what-works-today" class="toc-h3">What works today</a>
+<a href="#not-done-yet-tracked-on-roadmap" class="toc-h3">Not done yet (tracked on roadmap)</a>
+<a href="#health-check-2-june-2026" class="toc-h2">Health check (2 June 2026)</a>
+<a href="#recent-milestones" class="toc-h2">Recent milestones</a>
+<a href="#risks-amp-watch-items" class="toc-h2">Risks &amp; watch items</a>
+<a href="#next-actions-priority-order" class="toc-h2">Next actions (priority order)</a>
+<a href="#for-agents-amp-contributors" class="toc-h2">For agents &amp; contributors</a>
+        </nav>
+    <main class="content doc-body">
+      <header class="hero">
+        <h2>Project Status</h2>
+        <p class="formats">Also available: <a href="STATUS.md">Markdown</a> · <a href="STATUS.txt">Plain text</a></p>
+      </header>
+      <h1 id="project-status-gnomad-slate">Project Status — Gnomad Slate</h1><p><strong>Version:</strong> 0.1.0<br><strong>Phase:</strong> v0.1.0 shipped — development-ready, pre-distribution<br><strong>Last updated:</strong> 2 June 2026<br><strong>Roadmap:</strong> <a href="ROADMAP.md">ROADMAP.md</a></p>
+<hr>
+<h2 id="at-a-glance">At a glance</h2><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Product</strong></td>
+<td>Desktop scratchpad + encrypted secrets vault (Vault-X)</td>
+</tr>
+<tr>
+<td><strong>Stack</strong></td>
+<td>Tauri 2 · React 19 · Vite 7 · Rust (Argon2id, AES-256-GCM)</td>
+</tr>
+<tr>
+<td><strong>Repo</strong></td>
+<td><a href="https://github.com/davidthegnomad/gnomad-slate">github.com/davidthegnomad/gnomad-slate</a> (private)</td>
+</tr>
+<tr>
+<td><strong>Default branch</strong></td>
+<td><code>main</code></td>
+</tr>
+<tr>
+<td><strong>Latest commit</strong></td>
+<td><code>00548ae</code> — <em>Harden vault security, add UX polish, and ship full documentation suite</em></td>
+</tr>
+<tr>
+<td><strong>GitHub release</strong></td>
+<td>None yet (local builds only)</td>
+</tr>
+<tr>
+<td><strong>CI</strong></td>
+<td>Not configured (planned v0.2)</td>
+</tr>
+<tr>
+<td><strong>Tests</strong></td>
+<td>14 Rust (<code>cargo test</code>) · 4 Vitest (<code>npm test</code>) — passing</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="current-phase">Current phase</h2><p><strong>v0.1.0 is feature-complete for internal use.</strong> Security hardening, documentation, and core UX are done. The app is suitable for daily dogfooding on macOS. Distribution (signed installers, CI, tagged releases) is the main gap before calling v0.2 “released.”</p>
+<h3 id="what-works-today">What works today</h3><ul>
+<li><strong>Scratchpad &amp; vault notes</strong> — Markdown buffers; scratchpad auto-archives after 48h; vault notes persist as <code>vault_*.md</code></li>
+<li><strong>Markdown</strong> — Edit / Split / Preview via <code>marked</code></li>
+<li><strong>Vault-X</strong> — Argon2id master password; AES-256-GCM v2; legacy v1 auto-migration on unlock</li>
+<li><strong>Secret handling</strong> — Values live in Rust <code>VaultSession</code> only; UI sees metadata; reveal/copy via IPC; heap zeroized on lock</li>
+<li><strong>Unlock protection</strong> — Rate limit (5 failures → 30s lockout)</li>
+<li><strong>Clipboard</strong> — History (⌘⇧V); Shannon entropy + prefix blocklist; sidebar toggle synced to Rust</li>
+<li><strong>macOS clipboard polling</strong> — <code>NSPasteboard.changeCount</code> with adaptive 1s/3s interval</li>
+<li><strong>Global summon</strong> — Option+Space; command palette; hide on blur</li>
+<li><strong>Data paths</strong> — <code>dirs::data_dir()/gnomad-slate</code> with migration from legacy Antigravity scratch path</li>
+<li><strong>Themes</strong> — Dark, light, system</li>
+</ul>
+<h3 id="not-done-yet-tracked-on-roadmap">Not done yet (tracked on roadmap)</h3><table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Target phase</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GitHub Actions (test + build on PR)</td>
+<td>v0.2</td>
+</tr>
+<tr>
+<td>Tagged release + installers</td>
+<td>v0.2</td>
+</tr>
+<tr>
+<td>Note rename by filename (orphan fix)</td>
+<td>v0.2</td>
+</tr>
+<tr>
+<td>Bundled Inter fonts (offline)</td>
+<td>v0.2</td>
+</tr>
+<tr>
+<td>Auto-lock on hide, Keychain/Touch ID</td>
+<td>v0.3</td>
+</tr>
+<tr>
+<td>macOS notarization, Windows signing</td>
+<td>v1.0</td>
+</tr>
+<tr>
+<td>Playwright / expanded E2E</td>
+<td>v1.0</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="health-check-2-june-2026">Health check (2 June 2026)</h2><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>cargo test</code> (src-tauri)</td>
+<td>✓ 14 passed</td>
+</tr>
+<tr>
+<td><code>npm test</code></td>
+<td>✓ 4 passed</td>
+</tr>
+<tr>
+<td><code>main</code> pushed to origin</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Docs suite (MD + export)</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Production build verified this session</td>
+<td>— run <code>npm run tauri build</code> before release</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="recent-milestones">Recent milestones</h2><table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Milestone</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Jun 2026</td>
+<td>Standalone repo + private GitHub remote</td>
+</tr>
+<tr>
+<td>Jun 2026</td>
+<td>Security pass: Argon2id, vault session, path safety, rate limit, zeroization</td>
+</tr>
+<tr>
+<td>Jun 2026</td>
+<td>Clipboard filter + macOS changeCount polling</td>
+</tr>
+<tr>
+<td>Jun 2026</td>
+<td>Full <code>docs/</code> portfolio + <code>npm run docs:export</code></td>
+</tr>
+<tr>
+<td>2 Jun 2026</td>
+<td>Commit <code>00548ae</code> on <code>main</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="risks-amp-watch-items">Risks &amp; watch items</h2><ul>
+<li><strong>No CI</strong> — Regressions rely on manual <code>cargo test</code> / <code>npm test</code> until v0.2 workflows land.</li>
+<li><strong>macOS-first clipboard</strong> — Windows/Linux use timer polling only; event-driven pasteboard is v0.3.</li>
+<li><strong>Markdown preview</strong> — Uses <code>marked</code> without DOMPurify; acceptable for local trusted notes; harden before v1.0 GA.</li>
+<li><strong>Fonts</strong> — Inter loaded from CDN in dev; bundle locally for offline v0.2.</li>
+</ul>
+<hr>
+<h2 id="next-actions-priority-order">Next actions (priority order)</h2><ol>
+<li>Add <code>.github/workflows</code> — PR gate: Rust tests, Vitest, <code>npm run build</code></li>
+<li>Fix note updates when filename changes (avoid orphan files)</li>
+<li>Cut first tagged release (<code>v0.1.0</code> or <code>v0.2.0</code>) with release runbook</li>
+<li>Bundle Inter fonts in the Tauri asset pipeline</li>
+</ol>
+<p>Detail and priorities: <strong><a href="ROADMAP.md">ROADMAP.md</a></strong></p>
+<hr>
+<h2 id="for-agents-amp-contributors">For agents &amp; contributors</h2><ul>
+<li><strong>Session memory:</strong> <a href="../.agents/LOGS/SESSION_STATE.md">.agents/LOGS/SESSION_STATE.md</a> (hot state; update at checkpoint/end)</li>
+<li><strong>Build/test SOP:</strong> <a href="BUILD.md">BUILD.md</a> · <a href="TEST_STRATEGY.md">TEST_STRATEGY.md</a> · <a href="QA_CHECKLIST.md">QA_CHECKLIST.md</a></li>
+<li><strong>Security:</strong> <a href="VAULT_SECURITY.md">VAULT_SECURITY.md</a> · <a href="SECURITY_MODEL.md">SECURITY_MODEL.md</a></li>
+</ul>
+<hr>
+<p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+
+      <footer class="doc-footer">
+        <p>Built with <span aria-label="love">❤️</span> by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const links = document.querySelectorAll(".sidebar a[href^='#']");
+    const sections = [...links].map((a) => document.querySelector(a.getAttribute("href")));
+    const onScroll = () => {
+      let cur = 0;
+      sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= 120) cur = i; });
+      links.forEach((l, i) => l.classList.toggle("active", i === cur));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>

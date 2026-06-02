@@ -23,12 +23,14 @@ Regenerate HTML/TXT after editing Markdown:
 START HERE
 ----------
 
-  Document                   |  MD                 |  HTML                 |  TXT               
-  Project landing            |  —                  |  index.html           |  —                 
-  README (project overview)  |  ../README.md       |  ../README.html       |  ../README.txt     
-  User Guide                 |  USER_GUIDE.md      |  USER_GUIDE.html      |  USER_GUIDE.txt    
-  Vault & password security  |  VAULT_SECURITY.md  |  VAULT_SECURITY.html  |  VAULT_SECURITY.txt
-  Changelog                  |  ../CHANGELOG.md    |  ../CHANGELOG.html    |  ../CHANGELOG.txt  
+  Document                                              |  MD                 |  HTML                 |  TXT               
+  Project landing                                       |  —                  |  index.html           |  —                 
+  Project status (current phase, health, next actions)  |  STATUS.md          |  STATUS.html          |  STATUS.txt        
+  Roadmap (v0.2+ priorities)                            |  ROADMAP.md         |  ROADMAP.html         |  ROADMAP.txt       
+  README (project overview)                             |  ../README.md       |  ../README.html       |  ../README.txt     
+  User Guide                                            |  USER_GUIDE.md      |  USER_GUIDE.html      |  USER_GUIDE.txt    
+  Vault & password security                             |  VAULT_SECURITY.md  |  VAULT_SECURITY.html  |  VAULT_SECURITY.txt
+  Changelog                                             |  ../CHANGELOG.md    |  ../CHANGELOG.html    |  ../CHANGELOG.txt  
 
 ────────────────────────────────────────
 
@@ -42,6 +44,7 @@ ENGINEERING & PORTFOLIO
   Security Model (app-wide)           |  SECURITY_MODEL.md            |  SECURITY_MODEL.html            |  SECURITY_MODEL.txt          
   Vault & Password Security           |  VAULT_SECURITY.md            |  VAULT_SECURITY.html            |  VAULT_SECURITY.txt          
   Privacy                             |  PRIVACY.md                   |  PRIVACY.html                   |  PRIVACY.txt                 
+  Project status                      |  STATUS.md                    |  STATUS.html                    |  STATUS.txt                  
   Roadmap                             |  ROADMAP.md                   |  ROADMAP.html                   |  ROADMAP.txt                 
   Release runbook                     |  RELEASE_RUNBOOK.md           |  RELEASE_RUNBOOK.html           |  RELEASE_RUNBOOK.txt         
   Troubleshooting                     |  TROUBLESHOOTING.md           |  TROUBLESHOOTING.html           |  TROUBLESHOOTING.txt         
