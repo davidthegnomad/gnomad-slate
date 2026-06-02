@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vault &amp; Password Security — Gnomad Slate</title>
+  <meta name="description" content="Vault &amp; Password Security documentation for Gnomad Slate." />
+  <style>:root {
+  --bg-base: #0d1117;
+  --bg-panel: rgba(22, 27, 34, 0.95);
+  --bg-elevated: rgba(33, 38, 45, 0.98);
+  --border: rgba(48, 54, 61, 0.9);
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #818cf8;
+  --accent-secondary: #c084fc;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --pill-radius: 999px;
+  --radius: 12px;
+  --mesh:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.18), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 10% 30%, rgba(192, 132, 252, 0.1), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 95% 40%, rgba(129, 140, 248, 0.08), transparent 50%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg-base);
+  min-height: 100vh;
+}
+
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--mesh);
+  z-index: 0;
+}
+
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 1.5rem 1.25rem;
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.brand-icon { font-size: 1.5rem; }
+.brand h1 { font-size: 1rem; font-weight: 600; }
+
+.doc-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  word-break: break-all;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar a.toc-h3 { padding-left: 1.1rem; font-size: 0.78rem; }
+.sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.sidebar a.active { color: var(--accent); background: rgba(129, 140, 248, 0.12); }
+
+.content {
+  padding: 2rem 2.5rem 3rem;
+  max-width: 760px;
+}
+
+.hero { margin-bottom: 1.5rem; }
+.hero h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.formats { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+.formats a { color: var(--accent); }
+
+.doc-body h1 { font-size: 1.5rem; margin: 1.5rem 0 0.75rem; }
+.doc-body h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.doc-body h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; color: var(--accent); }
+.doc-body h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+
+.doc-body p { margin-bottom: 0.85rem; }
+.doc-body ul, .doc-body ol { margin: 0 0 1rem 1.25rem; color: var(--muted); }
+.doc-body li { margin-bottom: 0.35rem; }
+.doc-body li strong { color: var(--text); }
+
+.doc-body a { color: var(--accent); }
+.doc-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(255,255,255,0.08);
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  color: var(--accent-secondary);
+}
+
+.doc-body pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.doc-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 1rem 0;
+}
+
+.doc-body th, .doc-body td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-body th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.6rem 1rem;
+  margin: 1rem 0;
+  background: rgba(129, 140, 248, 0.08);
+  border-radius: 0 12px 12px 0;
+  color: var(--muted);
+}
+
+.doc-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.doc-footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.doc-footer a { color: var(--accent); text-decoration: none; }
+.doc-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="mesh-bg" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+          <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
+          <p class="doc-path">docs/VAULT_SECURITY.md</p>
+          <a href="#executive-summary" class="toc-h2">Executive summary</a>
+<a href="#trust-model" class="toc-h2">Trust model</a>
+<a href="#on-disk-layout" class="toc-h2">On-disk layout</a>
+<a href="#master-password-handling" class="toc-h2">Master password handling</a>
+<a href="#setting-the-password-initialize-vault" class="toc-h3">Setting the password (initialize vault)</a>
+<a href="#verifying-the-password-unlock" class="toc-h3">Verifying the password (unlock)</a>
+<a href="#legacy-migration-sha-256" class="toc-h3">Legacy migration (SHA-256)</a>
+<a href="#vault-file-encryption-v2" class="toc-h2">Vault file encryption (v2)</a>
+<a href="#key-derivation" class="toc-h3">Key derivation</a>
+<a href="#ciphertext-format-v2" class="toc-h3">Ciphertext format (v2)</a>
+<a href="#legacy-v1-format" class="toc-h3">Legacy v1 format</a>
+<a href="#in-memory-session-rust-only-secrets" class="toc-h2">In-memory session (Rust-only secrets)</a>
+<a href="#ipc-and-password-lifetime" class="toc-h2">IPC and password lifetime</a>
+<a href="#unlock-rate-limiting" class="toc-h2">Unlock rate limiting</a>
+<a href="#clipboard-history-related-control" class="toc-h2">Clipboard history (related control)</a>
+<a href="#recommendations-for-users" class="toc-h2">Recommendations for users</a>
+<a href="#recommendations-for-developers" class="toc-h2">Recommendations for developers</a>
+<a href="#related-documents" class="toc-h2">Related documents</a>
+        </nav>
+    <main class="content doc-body">
+      <header class="hero">
+        <h2>Vault &amp; Password Security</h2>
+        <p class="formats">Also available: <a href="VAULT_SECURITY.md">Markdown</a> · <a href="VAULT_SECURITY.txt">Plain text</a></p>
+      </header>
+      <h1 id="vault-amp-password-security-gnomad-slate">Vault &amp; Password Security — Gnomad Slate</h1><p><strong>Version:</strong> 0.1.0<br><strong>Last updated:</strong> June 2026<br><strong>Audience:</strong> Users, security reviewers, and engineers</p>
+<p>This document explains how <strong>Vault-X</strong> protects your master password and stored secrets (API keys, tokens, SSH configs). For app-wide security (notes, clipboard, filesystem), see <a href="SECURITY_MODEL.md">SECURITY_MODEL.md</a>.</p>
+<hr>
+<h2 id="executive-summary">Executive summary</h2><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Master password</strong></td>
+<td>Never stored in plaintext. Verified with <strong>Argon2id</strong> PHC hash in <code>vault_config.json</code>.</td>
+</tr>
+<tr>
+<td><strong>Secrets at rest</strong></td>
+<td>Encrypted in <code>vault.enc</code> with <strong>AES-256-GCM</strong>; key derived via <strong>Argon2id</strong> (<code>hash_password_into</code>).</td>
+</tr>
+<tr>
+<td><strong>Secrets in memory</strong></td>
+<td>Decrypted JSON exists <strong>only in the Rust process</strong> while the vault is unlocked.</td>
+</tr>
+<tr>
+<td><strong>Frontend exposure</strong></td>
+<td>UI receives <strong>names and paths only</strong>; values fetched on demand via IPC (<code>reveal</code> / <code>copy</code>).</td>
+</tr>
+<tr>
+<td><strong>Brute-force mitigation</strong></td>
+<td><strong>5 failed unlock attempts</strong> → <strong>30 second</strong> lockout; counter resets after 5 minutes idle.</td>
+</tr>
+<tr>
+<td><strong>Minimum password length</strong></td>
+<td>8 characters (enforced at initialize).</td>
+</tr>
+</tbody></table>
+<p>Gnomad Slate is a <strong>local-first desktop app</strong>. It does not send passwords or secrets to any server.</p>
+<hr>
+<h2 id="trust-model">Trust model</h2><pre><code>┌─────────────────────────────────────────────────────────────────┐
+│  TRUSTED: Tauri shell, Rust backend, bundled React UI            │
+├─────────────────────────────────────────────────────────────────┤
+│  USER DATA (protected):                                           │
+│    vault_config.json  → password *verification* hash only       │
+│    vault.enc          → encrypted secrets blob                    │
+│    notes/*.md         → plaintext markdown (not encrypted)        │
+├─────────────────────────────────────────────────────────────────┤
+│  UNTRUSTED: Other apps on the OS, malware, physical access      │
+│  LIMITED:   WebView memory (metadata only; values in Rust)        │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>What the vault protects against</strong></p>
+<ul>
+<li>Casual file browsing (secrets file is ciphertext)</li>
+<li>Accidental inclusion of secrets in the React UI state tree</li>
+<li>Rapid online password guessing (local rate limit)</li>
+</ul>
+<p><strong>What it does not protect against</strong></p>
+<ul>
+<li>Attacker with your <strong>unlocked</strong> session (secrets are in process memory)</li>
+<li><strong>Keyloggers</strong> or compromised OS capturing your master password at unlock</li>
+<li><strong>Memory dumps</strong> while vault is unlocked</li>
+<li><strong>Backup tools</strong> copying <code>vault.enc</code> + <code>vault_config.json</code> (offline brute force still possible with weak passwords)</li>
+</ul>
+<p>Use a <strong>strong, unique master password</strong> and <strong>lock the vault</strong> when stepping away.</p>
+<hr>
+<h2 id="on-disk-layout">On-disk layout</h2><p>All data lives under the platform app data directory (e.g. macOS <code>~/Library/Application Support/gnomad-slate/</code>):</p>
+<table>
+<thead>
+<tr>
+<th>File / folder</th>
+<th>Contents</th>
+<th>Encryption</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>vault_config.json</code></td>
+<td>Argon2id hash of master password</td>
+<td>Hash only (not reversible)</td>
+</tr>
+<tr>
+<td><code>vault.enc</code></td>
+<td>JSON array of secrets (<code>name</code>, <code>path</code>, <code>value</code>)</td>
+<td>AES-256-GCM (v2 format)</td>
+</tr>
+<tr>
+<td><code>notes/</code></td>
+<td>Markdown scratchpad and vault notes</td>
+<td>None (plaintext)</td>
+</tr>
+<tr>
+<td><code>archive/</code></td>
+<td>Archived ephemeral notes</td>
+<td>None</td>
+</tr>
+</tbody></table>
+<p>Legacy installs under <code>~/.gemini/antigravity/scratch/slate_data</code> (per-user home directory) may be migrated automatically into the platform app data folder on first launch.</p>
+<hr>
+<h2 id="master-password-handling">Master password handling</h2><h3 id="setting-the-password-initialize-vault">Setting the password (initialize vault)</h3><ol>
+<li>User enters password in the lock screen (WebView input).</li>
+<li>Rust validates length ≥ 8 characters.</li>
+<li>Rust computes <strong>Argon2id</strong> password hash (random salt per install) and writes <code>vault_config.json</code>.</li>
+<li>Rust opens an empty in-memory vault session and writes encrypted <code>vault.enc</code> (<code>[]</code>).</li>
+<li>Password string is <strong>cleared from the frontend</strong>; it is <strong>not</strong> kept in React state after success.</li>
+</ol>
+<h3 id="verifying-the-password-unlock">Verifying the password (unlock)</h3><ol>
+<li>Rate limiter checks lockout state.</li>
+<li>Rust reads <code>vault_config.json</code> and verifies password with <strong>constant-time</strong> Argon2 verify.</li>
+<li>On failure: increment failure counter; return generic <code>&quot;Invalid password&quot;</code>.</li>
+<li>On success: decrypt <code>vault.enc</code>, load secrets into <code>VaultSession</code> in Rust, reset rate limiter.</li>
+<li>Password cleared from frontend again.</li>
+</ol>
+<h3 id="legacy-migration-sha-256">Legacy migration (SHA-256)</h3><p>Early builds stored a <strong>64-character hex SHA-256</strong> of the password (no salt). On successful login against a legacy hash, Slate <strong>re-hashes with Argon2id</strong> and updates <code>vault_config.json</code>. SHA-256 verification uses a constant-time byte comparison.</p>
+<hr>
+<h2 id="vault-file-encryption-v2">Vault file encryption (v2)</h2><h3 id="key-derivation">Key derivation</h3><p>The vault file uses a <strong>fixed application salt</strong> (not secret — it separates this app from other Argon2 uses) combined with your master password:</p>
+<pre><code>vault_key = Argon2id( password, salt = &quot;com.gnomadstudio.gnomad-slate.vault.v2&quot; ) → 32 bytes
+</code></pre>
+<p>Implementation: <code>argon2::Argon2::hash_password_into</code> in <code>src-tauri/src/crypto.rs</code>.</p>
+<h3 id="ciphertext-format-v2">Ciphertext format (v2)</h3><pre><code>[ 0x02 | 12-byte random nonce | AES-GCM ciphertext + auth tag ]
+</code></pre>
+<ul>
+<li><strong>Algorithm:</strong> AES-256-GCM (authenticated encryption — tampering is detected).</li>
+<li><strong>Nonce:</strong> Random per save (never reused with the same key).</li>
+<li><strong>On save:</strong> Entire secrets JSON is serialized, encrypted, and written atomically to <code>vault.enc</code>.</li>
+</ul>
+<h3 id="legacy-v1-format">Legacy v1 format</h3><p>Older <code>vault.enc</code> files used a per-file random salt and a different KDF path. On unlock, v1 files decrypt successfully, then are <strong>re-encrypted as v2</strong> automatically.</p>
+<hr>
+<h2 id="in-memory-session-rust-only-secrets">In-memory session (Rust-only secrets)</h2><p>While unlocked, <code>VaultSession</code> holds:</p>
+<ul>
+<li><code>Zeroizing&lt;[u8; 32]&gt;</code> — derived encryption key (zeroed on drop)  </li>
+<li><code>Vec&lt;SecretItem&gt;</code> — decrypted credentials</li>
+</ul>
+<p>Each <code>SecretItem</code> implements <code>Zeroize</code> + <code>ZeroizeOnDrop</code>: when the vault is <strong>locked</strong> or a secret is <strong>deleted</strong>, Rust overwrites the <code>String</code> heap buffers (<code>name</code>, <code>path</code>, <code>value</code>) before returning memory to the allocator. Ephemeral copies returned to IPC (<code>get_value</code>) use <code>Zeroizing&lt;String&gt;</code> and are cleared when the command handler returns.</p>
+<p><code>VaultSession</code> itself derives <code>ZeroizeOnDrop</code> so the entire secrets vector is scrubbed when the session ends.</p>
+<p><strong>Residual risk:</strong> OS swap, hibernation, debuggers, or crash dumps may still capture RAM outside Rust’s control. Full-disk encryption and locking the vault reduce exposure. Revealed values in the WebView DOM remain visible until the user clicks Hide or Lock.</p>
+<p>The WebView <strong>never</strong> receives the full secrets list with values.</p>
+<table>
+<thead>
+<tr>
+<th>Tauri command</th>
+<th>Returns to UI</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>list_secret_metadata</code></td>
+<td><code>{ index, name, path }[]</code></td>
+</tr>
+<tr>
+<td><code>reveal_secret_value(index)</code></td>
+<td>Single value (only when user clicks Show)</td>
+</tr>
+<tr>
+<td><code>copy_secret_to_clipboard(index)</code></td>
+<td>Nothing (Rust writes clipboard directly)</td>
+</tr>
+<tr>
+<td><code>add_secret</code> / <code>delete_secret</code></td>
+<td>Success/error; then metadata refresh</td>
+</tr>
+</tbody></table>
+<p><strong>Lock vault</strong> (<code>lock_vault</code>) drops the session and clears revealed values in the UI.</p>
+<hr>
+<h2 id="ipc-and-password-lifetime">IPC and password lifetime</h2><table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Master password in React?</th>
+<th>Secret values in React?</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Lock screen</td>
+<td>Yes (input only)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>After unlock</td>
+<td><strong>No</strong> (cleared)</td>
+<td><strong>No</strong> (metadata only)</td>
+</tr>
+<tr>
+<td>Show secret</td>
+<td>No</td>
+<td><strong>One</strong> value briefly for display</td>
+</tr>
+<tr>
+<td>Copy secret</td>
+<td>No</td>
+<td><strong>No</strong> (Rust → OS clipboard)</td>
+</tr>
+</tbody></table>
+<p>Saving secrets does <strong>not</strong> require re-entering the password; the Rust session already holds the derived key.</p>
+<hr>
+<h2 id="unlock-rate-limiting">Unlock rate limiting</h2><p>Implemented in <code>src-tauri/src/unlock_limiter.rs</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Max failed attempts</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Lockout duration</td>
+<td>30 seconds</td>
+</tr>
+<tr>
+<td>Attempt counter reset</td>
+<td>5 minutes without failures</td>
+</tr>
+</tbody></table>
+<p>Successful unlock or vault initialization resets the counter.</p>
+<hr>
+<h2 id="clipboard-history-related-control">Clipboard history (related control)</h2><p>The clipboard monitor can <strong>filter</strong> likely credentials before storing history (<code>clipboard_filter.rs</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Prefix blocklist</td>
+<td><code>ghp_</code>, <code>sk-proj-</code>, <code>PRIVATE KEY</code>, <code>Bearer </code>, DB URLs, etc.</td>
+</tr>
+<tr>
+<td>Shannon entropy</td>
+<td>Token-like strings (32–256 chars, ≥4.2 bits/char)</td>
+</tr>
+<tr>
+<td>Benign allowlist</td>
+<td>Emails, prose, normal URLs, camelCase identifiers ≤55 chars</td>
+</tr>
+<tr>
+<td>User toggle</td>
+<td>Sidebar <strong>Filter sensitive clipboard items</strong> → <code>set_clipboard_filter_enabled</code></td>
+</tr>
+</tbody></table>
+<p>When filtering is <strong>disabled</strong>, all clipboard text (except empty / &gt;20 KB) may appear in history.</p>
+<p>Monitor efficiency: on macOS, <code>NSPasteboard.changeCount</code> avoids reading the pasteboard when unchanged; poll interval backs off from <strong>1s</strong> to <strong>3s</strong> when idle.</p>
+<p>This is <strong>heuristic</strong>, not cryptographic — use Vault-X for real secrets.</p>
+<hr>
+<h2 id="recommendations-for-users">Recommendations for users</h2><ol>
+<li>Choose a <strong>long, unique</strong> master password (passphrase recommended).</li>
+<li><strong>Lock</strong> the vault when finished (<code>Lock Vault</code> button).</li>
+<li>Do not store the same secret in a <strong>plaintext vault note</strong> and Vault-X.</li>
+<li>Protect backups of <code>~/Library/Application Support/gnomad-slate/</code> (or equivalent) — they contain your encrypted vault and password hash.</li>
+<li>Use <strong>full-disk encryption</strong> on your machine.</li>
+</ol>
+<hr>
+<h2 id="recommendations-for-developers">Recommendations for developers</h2><ul>
+<li>Do not add Tauri commands that return all secret values in one JSON blob.</li>
+<li>Do not log passwords, derived keys, or decrypted vault JSON.</li>
+<li>Use <code>Zeroize</code> / <code>ZeroizeOnDrop</code> on in-memory secret structs; <code>Zeroizing&lt;T&gt;</code> for ephemeral copies.</li>
+<li>Run <code>cargo test</code> in <code>src-tauri</code> after crypto changes (see <code>crypto::tests::v2_roundtrip</code>).</li>
+<li>Document any new vault format with a version byte and migration path.</li>
+</ul>
+<hr>
+<h2 id="related-documents">Related documents</h2><ul>
+<li><a href="SECURITY_MODEL.md">SECURITY_MODEL.md</a> — notes, clipboard, filesystem, shortcuts  </li>
+<li><a href="ARCHITECTURE.md">ARCHITECTURE.md</a> — data flows and Tauri commands  </li>
+<li><a href="PRIVACY.md">PRIVACY.md</a> — what leaves the device  </li>
+<li><a href="USER_GUIDE.md">USER_GUIDE.md</a> — how to use Vault-X in the UI</li>
+</ul>
+<hr>
+<p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+
+      <footer class="doc-footer">
+        <p>Built with <span aria-label="love">❤️</span> by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const links = document.querySelectorAll(".sidebar a[href^='#']");
+    const sections = [...links].map((a) => document.querySelector(a.getAttribute("href")));
+    const onScroll = () => {
+      let cur = 0;
+      sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= 120) cur = i; });
+      links.forEach((l, i) => l.classList.toggle("active", i === cur));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>

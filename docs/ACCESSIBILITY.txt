@@ -1,0 +1,44 @@
+════════════════════════════════════════════════════════════════════════
+  ACCESSIBILITY
+  Gnomad Slate · docs/ACCESSIBILITY.md
+════════════════════════════════════════════════════════════════════════
+
+ACCESSIBILITY — GNOMAD SLATE
+============================
+
+Version: 0.1.0  
+Last updated: June 2026
+
+────────────────────────────────────────
+
+CURRENT STATE (V0.1)
+--------------------
+
+  • Native HTML inputs for search, title, password, and secret forms
+  • Keyboard shortcuts for palette and clipboard
+  • Theme contrast: dark and light CSS variable sets
+  • Editor and markdown preview support text selection (user-select: text)
+  • Clipboard filter checkbox with visible label
+
+GAPS
+----
+
+  • [ ] Focus trap in modals
+  • [ ] ARIA labels on icon-only / compact toolbar buttons
+  • [ ] Palette list keyboard navigation (↑/↓ + Enter)
+  • [ ] High-contrast third theme
+  • [ ] Screen reader audit for vault table and preview pane
+
+TARGET
+------
+
+WCAG 2.1 AA for v1.0 — track on ROADMAP.md.
+
+────────────────────────────────────────
+
+Built with ❤️ by Gnomad Studio 🦙
+
+════════════════════════════════════════════════════════════════════════
+Built with ❤️ by Gnomad Studio 🦙
+https://gnomadstudio.org
+════════════════════════════════════════════════════════════════════════

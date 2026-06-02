@@ -1,0 +1,119 @@
+════════════════════════════════════════════════════════════════════════
+  TECHNOLOGY STACK
+  Gnomad Slate · docs/TECH_STACK.md
+════════════════════════════════════════════════════════════════════════
+
+TECHNOLOGY STACK — GNOMAD SLATE
+===============================
+
+Document owner: Engineering  
+Version: 0.1.0  
+Last updated: June 2026
+
+────────────────────────────────────────
+
+EXECUTIVE SUMMARY
+-----------------
+
+Gnomad Slate is a Tauri 2 desktop application combining a React 19 + TypeScript UI with a Rust backend focused on cryptography, filesystem access, and clipboard monitoring. There is no backend server — all data stays on the user's machine.
+
+────────────────────────────────────────
+
+STACK OVERVIEW
+--------------
+
+  Layer             |  Technology                      |  Role                             
+  Shell             |  Tauri 2                         |  Windowing, IPC, bundling         
+  UI                |  React 19, TypeScript, Vite 7    |  Single-page app                  
+  Markdown          |  marked 15                       |  Live preview rendering           
+  Crypto            |  aes-gcm, argon2, sha2, zeroize  |  Vault encryption & memory hygiene
+  Clipboard         |  arboard + clipboard_filter      |  Monitor, filter, copy secrets    
+  macOS pasteboard  |  objc2-app-kit (macOS only)      |  changeCount without full read    
+  Paths             |  dirs                            |  Portable app data directory      
+  Serialization     |  serde, serde_json               |  Notes metadata, vault JSON       
+  Shortcuts         |  tauri-plugin-global-shortcut    |  Option+Space toggle              
+  Testing           |  cargo test, Vitest 3, jsdom     |  14 Rust + 4 frontend tests       
+
+────────────────────────────────────────
+
+FRONTEND
+--------
+
+  Module                 |  Responsibility                                                 
+  src/App.tsx            |  Notes editor, preview modes, vault UI, palette, clipboard modal
+  src/App.css            |  Themes, split editor, markdown preview styles                  
+  src/utils/markdown.ts  |  marked render + script-tag sanitization                        
+  src/utils/theme.ts     |  Light/dark/system resolution                                   
+  src/main.tsx           |  React entry                                                    
+
+State: React useState / useRef / useCallback / useMemo (no global store in v0.1).
+
+Local preferences: gnomad-theme, gnomad-clipboard-filter in localStorage.
+
+Persistence: Notes and vault via Tauri invoke — secrets never in localStorage.
+
+────────────────────────────────────────
+
+BACKEND (RUST)
+--------------
+
+  [code]
+    src-tauri/src/
+    ├── lib.rs                 # Tauri commands, AppState
+    ├── crypto.rs              # Argon2 KDF, AES-256-GCM v1/v2
+    ├── biometrics.rs          # Master password hash (Argon2id)
+    ├── vault_session.rs       # In-memory secrets (ZeroizeOnDrop)
+    ├── unlock_limiter.rs      # Failed unlock throttling
+    ├── filesystem.rs          # Notes, data dir, path validation
+    ├── clipboard_filter.rs    # Prefix blocklist + Shannon entropy
+    ├── clipboard.rs           # Adaptive monitor thread
+    ├── pasteboard_macos.rs    # NSPasteboard changeCount (macOS)
+    └── main.rs
+
+  Crate                  |  Purpose                                  
+  aes-gcm                |  Authenticated encryption for vault.enc   
+  argon2                 |  Password hashing and key derivation      
+  zeroize                |  Clear keys and SecretItem strings on drop
+  sha2                   |  Legacy SHA-256 password migration only   
+  rand                   |  Nonces and salts                         
+  arboard                |  Clipboard monitor + secret copy          
+  objc2-app-kit (macOS)  |  Pasteboard change detection              
+
+────────────────────────────────────────
+
+BUILD & TEST TOOLCHAIN
+----------------------
+
+  Tool        |  Notes                          
+  Node.js     |  LTS                            
+  Rust        |  stable                         
+  Vite        |  Port 1420 (Tauri dev)          
+  Tauri CLI   |  npm run tauri:dev / tauri:build
+  Vitest      |  npm test — src/*/.test.ts      
+  cargo test  |  14 unit tests in src-tauri     
+
+  [bash]
+    npm install
+    npm run tauri dev
+    npm test
+    cd src-tauri && cargo test
+    npm run docs:export
+
+────────────────────────────────────────
+
+RELATED DOCUMENTS
+-----------------
+
+  • ARCHITECTURE.md — flows and commands
+  • TEST_STRATEGY.md — coverage map
+  • BUILD_PLATFORMS.md — per-OS builds
+  • VAULT_SECURITY.md — crypto deep dive
+
+────────────────────────────────────────
+
+Built with ❤️ by Gnomad Studio 🦙
+
+════════════════════════════════════════════════════════════════════════
+Built with ❤️ by Gnomad Studio 🦙
+https://gnomadstudio.org
+════════════════════════════════════════════════════════════════════════

@@ -4,6 +4,8 @@ use std::thread;
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
 
+use crate::clipboard_filter;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClipboardEntry {
     pub text: String,
@@ -23,20 +25,17 @@ impl ClipboardHistory {
         }
     }
 
-    pub fn add(&mut self, text: String) -> bool {
-        // Check if text is sensitive (API keys, passwords, private keys)
-        if is_sensitive(&text) {
+    pub fn add(&mut self, text: String, filter_enabled: bool) -> bool {
+        if filter_enabled && clipboard_filter::is_sensitive(&text) {
             return false;
         }
 
-        // Avoid duplicate consecutive entries
         if let Some(last) = self.entries.first() {
             if last.text == text {
                 return false;
             }
         }
 
-        // Remove any prior identical entries to move this one to the top
         self.entries.retain(|e| e.text != text);
 
         let timestamp = std::time::SystemTime::now()
@@ -46,7 +45,6 @@ impl ClipboardHistory {
 
         self.entries.insert(0, ClipboardEntry { text, timestamp });
 
-        // Enforce max size limit
         if self.entries.len() > self.max_size {
             self.entries.truncate(self.max_size);
         }
@@ -59,60 +57,16 @@ impl ClipboardHistory {
     }
 }
 
-/// Simple scanner to filter out sensitive credentials from clipboard history
-fn is_sensitive(text: &str) -> bool {
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        return true;
-    }
+const POLL_ACTIVE_MS: u64 = 1000;
+const POLL_IDLE_MS: u64 = 3000;
+const IDLE_POLLS_BEFORE_SLOWDOWN: u32 = 5;
 
-    // Reject extremely large text blocks (> 20KB) in clipboard history to avoid memory bloat
-    if text.len() > 20_000 {
-        return true;
-    }
-
-    // Standard credential headers or key prefixes
-    let patterns = [
-        "-----BEGIN",
-        "PRIVATE KEY",
-        "ghp_", // GitHub Personal Access Token
-        "sk-proj-", // OpenAI API key
-        "xoxb-", // Slack Token
-        "AWS_SECRET_ACCESS_KEY",
-        "DATABASE_URL",
-        "mysql://",
-        "postgresql://",
-        "amqp://",
-        "mongodb://",
-        "secret_key",
-        "client_secret",
-    ];
-
-    for pattern in patterns {
-        if trimmed.contains(pattern) {
-            return true;
-        }
-    }
-
-    // Check if it's a raw high-entropy string without whitespace (common API key pattern)
-    // E.g., length between 24 and 128 characters, with no spaces
-    if trimmed.len() >= 24 && trimmed.len() <= 128 && !trimmed.contains(' ') && !trimmed.contains('\n') {
-        // Simple heuristic: if it has high variation of upper/lower/numbers
-        let has_digit = trimmed.chars().any(|c| c.is_ascii_digit());
-        let has_lowercase = trimmed.chars().any(|c| c.is_ascii_lowercase());
-        let has_uppercase = trimmed.chars().any(|c| c.is_ascii_uppercase());
-        if has_digit && has_lowercase && has_uppercase {
-            return true;
-        }
-    }
-
-    false
-}
-
-/// Starts a background thread to poll the system clipboard and update the shared history
-pub fn start_clipboard_monitor(history: Arc<Mutex<ClipboardHistory>>) {
+/// Starts a background thread to monitor the system clipboard.
+pub fn start_clipboard_monitor(
+    history: Arc<Mutex<ClipboardHistory>>,
+    filter_enabled: Arc<Mutex<bool>>,
+) {
     thread::spawn(move || {
-        // Initialize clipboard. Fallback gracefully if clipboard access is denied
         let mut clipboard = match Clipboard::new() {
             Ok(c) => c,
             Err(e) => {
@@ -122,23 +76,46 @@ pub fn start_clipboard_monitor(history: Arc<Mutex<ClipboardHistory>>) {
         };
 
         let mut last_copied = String::new();
+        let mut sleep_ms = POLL_ACTIVE_MS;
+        let mut idle_polls = 0u32;
+        let mut last_change_count: Option<isize> = crate::pasteboard_macos::general_change_count();
 
         loop {
-            // Poll every 1 second
-            thread::sleep(Duration::from_millis(1000));
+            thread::sleep(Duration::from_millis(sleep_ms));
 
-            if let Ok(text) = clipboard.get_text() {
-                let trimmed = text.trim().to_string();
-                if !trimmed.is_empty() && trimmed != last_copied {
-                    last_copied = trimmed.clone();
-                    
-                    // Scope block to unlock mutex and push new entry
-                    {
-                        if let Ok(mut hist) = history.lock() {
-                            hist.add(trimmed);
-                        }
+            if let Some(count) = crate::pasteboard_macos::general_change_count() {
+                if last_change_count == Some(count) {
+                    idle_polls += 1;
+                    if idle_polls >= IDLE_POLLS_BEFORE_SLOWDOWN {
+                        sleep_ms = POLL_IDLE_MS;
                     }
+                    continue;
                 }
+                last_change_count = Some(count);
+            }
+
+            idle_polls = 0;
+            sleep_ms = POLL_ACTIVE_MS;
+
+            let Ok(text) = clipboard.get_text() else {
+                continue;
+            };
+
+            let trimmed = text.trim().to_string();
+            if trimmed.is_empty() || trimmed == last_copied {
+                idle_polls += 1;
+                if idle_polls >= IDLE_POLLS_BEFORE_SLOWDOWN {
+                    sleep_ms = POLL_IDLE_MS;
+                }
+                continue;
+            }
+
+            last_copied = trimmed.clone();
+
+            let filter_on = filter_enabled.lock().map(|g| *g).unwrap_or(true);
+
+            if let Ok(mut hist) = history.lock() {
+                hist.add(trimmed, filter_on);
             }
         }
     });

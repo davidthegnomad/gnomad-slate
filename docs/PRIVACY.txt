@@ -1,0 +1,81 @@
+════════════════════════════════════════════════════════════════════════
+  PRIVACY
+  Gnomad Slate · docs/PRIVACY.md
+════════════════════════════════════════════════════════════════════════
+
+PRIVACY — GNOMAD SLATE
+======================
+
+Version: 0.1.0  
+Last updated: June 2026
+
+────────────────────────────────────────
+
+SUMMARY
+-------
+
+Gnomad Slate is local-first. Notes, clipboard history, encrypted vault data, and UI preferences stay on your device. There is no Gnomad-operated sync server or analytics pipeline in v0.1.
+
+────────────────────────────────────────
+
+WHAT WE COLLECT
+---------------
+
+  Data                     |  Collected by app?                    |  Sent to Gnomad?
+  Markdown notes           |  Local files                          |  No             
+  Vault secrets            |  Encrypted vault.enc                  |  No             
+  Master password          |  Argon2 hash only                     |  No             
+  Clipboard history        |  In-memory (max 15); optional filter  |  No             
+  Theme preference         |  localStorage (gnomad-theme)          |  No             
+  Clipboard filter toggle  |  localStorage + Rust monitor          |  No             
+  Usage analytics          |  Not implemented                      |  No             
+
+────────────────────────────────────────
+
+WHERE DATA LIVES
+----------------
+
+  Data                     |  Location                                             
+  Notes                    |  /gnomad-slate/notes/                                 
+  Encrypted secrets        |  /gnomad-slate/vault.enc                              
+  Password hash            |  /gnomad-slate/vault_config.json                      
+  Legacy migration source  |  ~/.gemini/antigravity/scratch/slate_data (if present)
+
+macOS example: ~/Library/Application Support/gnomad-slate/
+
+────────────────────────────────────────
+
+CLIPBOARD FILTER
+----------------
+
+When Filter sensitive clipboard items is enabled (default), Slate tries to exclude likely API keys from in-app history. This does not prevent other applications from reading the system clipboard. You can disable filtering in the sidebar.
+
+────────────────────────────────────────
+
+THIRD-PARTY SERVICES
+--------------------
+
+  Service       |  When                  |  Data shared            
+  Google Fonts  |  UI load (CSS import)  |  Font requests if online
+  GitHub        |  Clone / releases      |  Standard Git hosting   
+
+No third party receives vault plaintext or your master password.
+
+────────────────────────────────────────
+
+YOUR RESPONSIBILITIES
+---------------------
+
+  • Back up the app data folder.
+  • Use a strong vault master password — see VAULT_SECURITY.md.
+  • Lock the vault on shared machines.
+  • Treat markdown preview as rendering your own content only.
+
+────────────────────────────────────────
+
+Built with ❤️ by Gnomad Studio 🦙
+
+════════════════════════════════════════════════════════════════════════
+Built with ❤️ by Gnomad Studio 🦙
+https://gnomadstudio.org
+════════════════════════════════════════════════════════════════════════

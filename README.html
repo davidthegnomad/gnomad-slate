@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gnomad Slate — Gnomad Slate</title>
+  <meta name="description" content="Gnomad Slate documentation for Gnomad Slate." />
+  <style>:root {
+  --bg-base: #0d1117;
+  --bg-panel: rgba(22, 27, 34, 0.95);
+  --bg-elevated: rgba(33, 38, 45, 0.98);
+  --border: rgba(48, 54, 61, 0.9);
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #818cf8;
+  --accent-secondary: #c084fc;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --pill-radius: 999px;
+  --radius: 12px;
+  --mesh:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.18), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 10% 30%, rgba(192, 132, 252, 0.1), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 95% 40%, rgba(129, 140, 248, 0.08), transparent 50%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg-base);
+  min-height: 100vh;
+}
+
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--mesh);
+  z-index: 0;
+}
+
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 1.5rem 1.25rem;
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.brand-icon { font-size: 1.5rem; }
+.brand h1 { font-size: 1rem; font-weight: 600; }
+
+.doc-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  word-break: break-all;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar a.toc-h3 { padding-left: 1.1rem; font-size: 0.78rem; }
+.sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.sidebar a.active { color: var(--accent); background: rgba(129, 140, 248, 0.12); }
+
+.content {
+  padding: 2rem 2.5rem 3rem;
+  max-width: 760px;
+}
+
+.hero { margin-bottom: 1.5rem; }
+.hero h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.formats { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+.formats a { color: var(--accent); }
+
+.doc-body h1 { font-size: 1.5rem; margin: 1.5rem 0 0.75rem; }
+.doc-body h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.doc-body h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; color: var(--accent); }
+.doc-body h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+
+.doc-body p { margin-bottom: 0.85rem; }
+.doc-body ul, .doc-body ol { margin: 0 0 1rem 1.25rem; color: var(--muted); }
+.doc-body li { margin-bottom: 0.35rem; }
+.doc-body li strong { color: var(--text); }
+
+.doc-body a { color: var(--accent); }
+.doc-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(255,255,255,0.08);
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  color: var(--accent-secondary);
+}
+
+.doc-body pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.doc-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 1rem 0;
+}
+
+.doc-body th, .doc-body td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-body th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.6rem 1rem;
+  margin: 1rem 0;
+  background: rgba(129, 140, 248, 0.08);
+  border-radius: 0 12px 12px 0;
+  color: var(--muted);
+}
+
+.doc-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.doc-footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.doc-footer a { color: var(--accent); text-decoration: none; }
+.doc-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="mesh-bg" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+          <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
+          <p class="doc-path">README.md</p>
+          <a href="#why-this-exists" class="toc-h2">Why this exists</a>
+<a href="#capabilities-v010" class="toc-h2">Capabilities (v0.1.0)</a>
+<a href="#quick-start" class="toc-h2">Quick start</a>
+<a href="#developers" class="toc-h3">Developers</a>
+<a href="#users" class="toc-h3">Users</a>
+<a href="#architecture-summary" class="toc-h2">Architecture (summary)</a>
+<a href="#documentation-index" class="toc-h2">Documentation index</a>
+<a href="#license" class="toc-h2">License</a>
+<a href="#acknowledgments" class="toc-h2">Acknowledgments</a>
+        </nav>
+    <main class="content doc-body">
+      <header class="hero">
+        <h2>Gnomad Slate</h2>
+        <p class="formats">Also available: <a href="README.md">Markdown</a> · <a href="README.txt">Plain text</a></p>
+      </header>
+      <h1 id="gnomad-slate">Gnomad Slate</h1><p><a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.0-06b6d4" alt="Version"></a>
+<a href="docs/TECH_STACK.md"><img src="https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%2019-8b5cf6" alt="Stack"></a>
+<a href="docs/VAULT_SECURITY.md"><img src="https://img.shields.io/badge/vault-AES--256--GCM%20%2B%20Argon2id-333" alt="Security"></a>
+<a href="docs/TEST_STRATEGY.md"><img src="https://img.shields.io/badge/tests-14%20Rust%20%2B%204%20Vitest-333" alt="Tests"></a></p>
+<p><strong>Gnomad Slate</strong> is a desktop scratchpad and encrypted secrets vault — quick markdown capture with live preview, clipboard history, and <strong>Vault-X</strong> for API keys and tokens. Summon with <strong>Option+Space</strong> from anywhere.</p>
+<p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+<p><strong>Repository:</strong> <a href="https://github.com/davidthegnomad/gnomad-slate">github.com/davidthegnomad/gnomad-slate</a></p>
+<hr>
+<h2 id="why-this-exists">Why this exists</h2><p>You need a place to drop thoughts, snippets, and credentials without opening a browser or leaving secrets in plain notes. Slate stays ready in the background: scratchpad notes with markdown preview, persistent vault notes, filtered clipboard history, and a <strong>Rust-backed</strong> encrypted secret store the UI never holds in full.</p>
+<hr>
+<h2 id="capabilities-v010">Capabilities (v0.1.0)</h2><table>
+<thead>
+<tr>
+<th>Area</th>
+<th>What you get</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Scratchpad</strong></td>
+<td>Ephemeral markdown notes; auto-archive after 48h</td>
+</tr>
+<tr>
+<td><strong>Vault notes</strong></td>
+<td>Persistent <code>vault_*.md</code> buffers</td>
+</tr>
+<tr>
+<td><strong>Markdown</strong></td>
+<td>Edit, Split, and Preview modes (<code>marked</code>)</td>
+</tr>
+<tr>
+<td><strong>Vault-X</strong></td>
+<td>AES-256-GCM secrets; Argon2id master password</td>
+</tr>
+<tr>
+<td><strong>Security</strong></td>
+<td>Secrets in Rust only; zeroized heap; rate-limited unlock</td>
+</tr>
+<tr>
+<td><strong>Clipboard</strong></td>
+<td>History capsule (⌘⇧V); entropy + prefix filter; <strong>toggle in sidebar</strong></td>
+</tr>
+<tr>
+<td><strong>Capture</strong></td>
+<td>Global shortcut, command palette, hide on blur</td>
+</tr>
+<tr>
+<td><strong>Themes</strong></td>
+<td>Dark, light, system</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="quick-start">Quick start</h2><h3 id="developers">Developers</h3><p><strong>Prerequisites:</strong> Node.js LTS, Rust stable, <a href="https://v2.tauri.app/start/prerequisites/">Tauri v2 prerequisites</a></p>
+<pre><code class="language-bash">cd 05_apps_and_extensions/gnomad-slate
+npm install
+npm run tauri dev      # Desktop + HMR (port 1420)
+npm test               # Vitest (4 tests)
+cd src-tauri &amp;&amp; cargo test   # Rust (14 tests)
+</code></pre>
+<p><strong>Production build:</strong> <code>npm run tauri build</code></p>
+<h3 id="users">Users</h3><p>See <a href="docs/USER_GUIDE.md"><code>docs/USER_GUIDE.md</code></a> · <a href="docs/USER_GUIDE.html">HTML</a> · <a href="docs/USER_GUIDE.txt">TXT</a></p>
+<p><strong>Vault security (passwords &amp; encryption):</strong> <a href="docs/VAULT_SECURITY.md"><code>docs/VAULT_SECURITY.md</code></a> · <a href="docs/VAULT_SECURITY.html">HTML</a></p>
+<hr>
+<h2 id="architecture-summary">Architecture (summary)</h2><pre><code>┌─────────────────────────────────────────────────────────┐
+│  React UI — notes, markdown preview, vault metadata    │
+└───────────────────────────┬─────────────────────────────┘
+                            │ Tauri invoke
+┌───────────────────────────▼─────────────────────────────┐
+│  Rust — crypto, vault session, notes FS, clipboard     │
+└─────────────────────────────────────────────────────────┘
+</code></pre>
+<p>Deep dive: <a href="docs/ARCHITECTURE.md"><code>docs/ARCHITECTURE.md</code></a> · <a href="docs/TECH_STACK.md"><code>docs/TECH_STACK.md</code></a></p>
+<hr>
+<h2 id="documentation-index">Documentation index</h2><p>All docs ship as <strong>Markdown</strong>, <strong>HTML</strong>, and <strong>TXT</strong>. Full index: <a href="docs/DOCS_INDEX.md"><code>docs/DOCS_INDEX.md</code></a>. Regenerate: <code>npm run docs:export</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>MD</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>All docs</strong></td>
+<td><a href="docs/DOCS_INDEX.md">docs/DOCS_INDEX.md</a></td>
+<td><a href="docs/DOCS_INDEX.html">docs/DOCS_INDEX.html</a></td>
+</tr>
+<tr>
+<td><strong>Project site</strong></td>
+<td>—</td>
+<td><a href="docs/index.html">docs/index.html</a></td>
+</tr>
+<tr>
+<td>User Guide</td>
+<td><a href="docs/USER_GUIDE.md">docs/USER_GUIDE.md</a></td>
+<td><a href="docs/USER_GUIDE.html">docs/USER_GUIDE.html</a></td>
+</tr>
+<tr>
+<td><strong>Vault &amp; Password Security</strong></td>
+<td><a href="docs/VAULT_SECURITY.md">docs/VAULT_SECURITY.md</a></td>
+<td><a href="docs/VAULT_SECURITY.html">docs/VAULT_SECURITY.html</a></td>
+</tr>
+<tr>
+<td>Architecture</td>
+<td><a href="docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a></td>
+<td><a href="docs/ARCHITECTURE.html">docs/ARCHITECTURE.html</a></td>
+</tr>
+<tr>
+<td>Test Strategy</td>
+<td><a href="docs/TEST_STRATEGY.md">docs/TEST_STRATEGY.md</a></td>
+<td><a href="docs/TEST_STRATEGY.html">docs/TEST_STRATEGY.html</a></td>
+</tr>
+<tr>
+<td>Build Platforms</td>
+<td><a href="docs/BUILD_PLATFORMS.md">docs/BUILD_PLATFORMS.md</a></td>
+<td><a href="docs/BUILD_PLATFORMS.html">docs/BUILD_PLATFORMS.html</a></td>
+</tr>
+<tr>
+<td>Changelog</td>
+<td><a href="CHANGELOG.md">CHANGELOG.md</a></td>
+<td><a href="CHANGELOG.html">CHANGELOG.html</a></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="license">License</h2><p>Private project — see repository settings. Contact <a href="https://gnomadstudio.org">Gnomad Studio</a> for licensing.</p>
+<hr>
+<h2 id="acknowledgments">Acknowledgments</h2><p>Built with <a href="https://v2.tauri.app/">Tauri</a>, <a href="https://react.dev/">React</a>, <a href="https://vite.dev/">Vite</a>, and <a href="https://marked.js.org/">marked</a>.</p>
+
+      <footer class="doc-footer">
+        <p>Built with <span aria-label="love">❤️</span> by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const links = document.querySelectorAll(".sidebar a[href^='#']");
+    const sections = [...links].map((a) => document.querySelector(a.getAttribute("href")));
+    const onScroll = () => {
+      let cur = 0;
+      sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= 120) cur = i; });
+      links.forEach((l, i) => l.classList.toggle("active", i === cur));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>

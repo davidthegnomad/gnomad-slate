@@ -1,0 +1,241 @@
+════════════════════════════════════════════════════════════════════════
+  VAULT & PASSWORD SECURITY
+  Gnomad Slate · docs/VAULT_SECURITY.md
+════════════════════════════════════════════════════════════════════════
+
+VAULT & PASSWORD SECURITY — GNOMAD SLATE
+========================================
+
+Version: 0.1.0  
+Last updated: June 2026  
+Audience: Users, security reviewers, and engineers
+
+This document explains how Vault-X protects your master password and stored secrets (API keys, tokens, SSH configs). For app-wide security (notes, clipboard, filesystem), see SECURITY_MODEL.md.
+
+────────────────────────────────────────
+
+EXECUTIVE SUMMARY
+-----------------
+
+  Property                 |  Implementation                                                                         
+  Master password          |  Never stored in plaintext. Verified with Argon2id PHC hash in vault_config.json.       
+  Secrets at rest          |  Encrypted in vault.enc with AES-256-GCM; key derived via Argon2id (hash_password_into).
+  Secrets in memory        |  Decrypted JSON exists only in the Rust process while the vault is unlocked.            
+  Frontend exposure        |  UI receives names and paths only; values fetched on demand via IPC (reveal / copy).    
+  Brute-force mitigation   |  5 failed unlock attempts → 30 second lockout; counter resets after 5 minutes idle.     
+  Minimum password length  |  8 characters (enforced at initialize).                                                 
+
+Gnomad Slate is a local-first desktop app. It does not send passwords or secrets to any server.
+
+────────────────────────────────────────
+
+TRUST MODEL
+-----------
+
+  [code]
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  TRUSTED: Tauri shell, Rust backend, bundled React UI            │
+    ├─────────────────────────────────────────────────────────────────┤
+    │  USER DATA (protected):                                           │
+    │    vault_config.json  → password *verification* hash only       │
+    │    vault.enc          → encrypted secrets blob                    │
+    │    notes/*.md         → plaintext markdown (not encrypted)        │
+    ├─────────────────────────────────────────────────────────────────┤
+    │  UNTRUSTED: Other apps on the OS, malware, physical access      │
+    │  LIMITED:   WebView memory (metadata only; values in Rust)        │
+    └─────────────────────────────────────────────────────────────────┘
+
+What the vault protects against
+
+  • Casual file browsing (secrets file is ciphertext)
+  • Accidental inclusion of secrets in the React UI state tree
+  • Rapid online password guessing (local rate limit)
+
+What it does not protect against
+
+  • Attacker with your unlocked session (secrets are in process memory)
+  • Keyloggers or compromised OS capturing your master password at unlock
+  • Memory dumps while vault is unlocked
+  • Backup tools copying vault.enc + vault_config.json (offline brute force still possible with weak passwords)
+
+Use a strong, unique master password and lock the vault when stepping away.
+
+────────────────────────────────────────
+
+ON-DISK LAYOUT
+--------------
+
+All data lives under the platform app data directory (e.g. macOS ~/Library/Application Support/gnomad-slate/):
+
+  File / folder      |  Contents                                   |  Encryption                
+  vault_config.json  |  Argon2id hash of master password           |  Hash only (not reversible)
+  vault.enc          |  JSON array of secrets (name, path, value)  |  AES-256-GCM (v2 format)   
+  notes/             |  Markdown scratchpad and vault notes        |  None (plaintext)          
+  archive/           |  Archived ephemeral notes                   |  None                      
+
+Legacy installs under ~/.gemini/antigravity/scratch/slate_data (per-user home directory) may be migrated automatically into the platform app data folder on first launch.
+
+────────────────────────────────────────
+
+MASTER PASSWORD HANDLING
+------------------------
+
+Setting the password (initialize vault)
+
+  1. User enters password in the lock screen (WebView input).
+  2. Rust validates length ≥ 8 characters.
+  3. Rust computes Argon2id password hash (random salt per install) and writes vault_config.json.
+  4. Rust opens an empty in-memory vault session and writes encrypted vault.enc ([]).
+  5. Password string is cleared from the frontend; it is not kept in React state after success.
+
+Verifying the password (unlock)
+
+  1. Rate limiter checks lockout state.
+  2. Rust reads vault_config.json and verifies password with constant-time Argon2 verify.
+  3. On failure: increment failure counter; return generic "Invalid password".
+  4. On success: decrypt vault.enc, load secrets into VaultSession in Rust, reset rate limiter.
+  5. Password cleared from frontend again.
+
+Legacy migration (SHA-256)
+
+Early builds stored a 64-character hex SHA-256 of the password (no salt). On successful login against a legacy hash, Slate re-hashes with Argon2id and updates vault_config.json. SHA-256 verification uses a constant-time byte comparison.
+
+────────────────────────────────────────
+
+VAULT FILE ENCRYPTION (V2)
+--------------------------
+
+Key derivation
+
+The vault file uses a fixed application salt (not secret — it separates this app from other Argon2 uses) combined with your master password:
+
+  [code]
+    vault_key = Argon2id( password, salt = "com.gnomadstudio.gnomad-slate.vault.v2" ) → 32 bytes
+
+Implementation: argon2::Argon2::hash_password_into in src-tauri/src/crypto.rs.
+
+Ciphertext format (v2)
+
+  [code]
+    [ 0x02 | 12-byte random nonce | AES-GCM ciphertext + auth tag ]
+
+  • Algorithm: AES-256-GCM (authenticated encryption — tampering is detected).
+  • Nonce: Random per save (never reused with the same key).
+  • On save: Entire secrets JSON is serialized, encrypted, and written atomically to vault.enc.
+
+Legacy v1 format
+
+Older vault.enc files used a per-file random salt and a different KDF path. On unlock, v1 files decrypt successfully, then are re-encrypted as v2 automatically.
+
+────────────────────────────────────────
+
+IN-MEMORY SESSION (RUST-ONLY SECRETS)
+-------------------------------------
+
+While unlocked, VaultSession holds:
+
+  • Zeroizing — derived encryption key (zeroed on drop)
+  • Vec — decrypted credentials
+
+Each SecretItem implements Zeroize + ZeroizeOnDrop: when the vault is locked or a secret is deleted, Rust overwrites the String heap buffers (name, path, value) before returning memory to the allocator. Ephemeral copies returned to IPC (get_value) use Zeroizing and are cleared when the command handler returns.
+
+VaultSession itself derives ZeroizeOnDrop so the entire secrets vector is scrubbed when the session ends.
+
+Residual risk: OS swap, hibernation, debuggers, or crash dumps may still capture RAM outside Rust’s control. Full-disk encryption and locking the vault reduce exposure. Revealed values in the WebView DOM remain visible until the user clicks Hide or Lock.
+
+The WebView never receives the full secrets list with values.
+
+  Tauri command                    |  Returns to UI                            
+  list_secret_metadata             |  { index, name, path }[]                  
+  reveal_secret_value(index)       |  Single value (only when user clicks Show)
+  copy_secret_to_clipboard(index)  |  Nothing (Rust writes clipboard directly) 
+  add_secret / delete_secret       |  Success/error; then metadata refresh     
+
+Lock vault (lock_vault) drops the session and clears revealed values in the UI.
+
+────────────────────────────────────────
+
+IPC AND PASSWORD LIFETIME
+-------------------------
+
+  Phase         |  Master password in React?  |  Secret values in React?      
+  Lock screen   |  Yes (input only)           |  No                           
+  After unlock  |  No (cleared)               |  No (metadata only)           
+  Show secret   |  No                         |  One value briefly for display
+  Copy secret   |  No                         |  No (Rust → OS clipboard)     
+
+Saving secrets does not require re-entering the password; the Rust session already holds the derived key.
+
+────────────────────────────────────────
+
+UNLOCK RATE LIMITING
+--------------------
+
+Implemented in src-tauri/src/unlock_limiter.rs:
+
+  Parameter              |  Value                     
+  Max failed attempts    |  5                         
+  Lockout duration       |  30 seconds                
+  Attempt counter reset  |  5 minutes without failures
+
+Successful unlock or vault initialization resets the counter.
+
+────────────────────────────────────────
+
+CLIPBOARD HISTORY (RELATED CONTROL)
+-----------------------------------
+
+The clipboard monitor can filter likely credentials before storing history (clipboard_filter.rs):
+
+  Mechanism         |  Detail                                                                 
+  Prefix blocklist  |  ghp_, sk-proj-, PRIVATE KEY, Bearer , DB URLs, etc.                    
+  Shannon entropy   |  Token-like strings (32–256 chars, ≥4.2 bits/char)                      
+  Benign allowlist  |  Emails, prose, normal URLs, camelCase identifiers ≤55 chars            
+  User toggle       |  Sidebar Filter sensitive clipboard items → set_clipboard_filter_enabled
+
+When filtering is disabled, all clipboard text (except empty / >20 KB) may appear in history.
+
+Monitor efficiency: on macOS, NSPasteboard.changeCount avoids reading the pasteboard when unchanged; poll interval backs off from 1s to 3s when idle.
+
+This is heuristic, not cryptographic — use Vault-X for real secrets.
+
+────────────────────────────────────────
+
+RECOMMENDATIONS FOR USERS
+-------------------------
+
+  1. Choose a long, unique master password (passphrase recommended).
+  2. Lock the vault when finished (Lock Vault button).
+  3. Do not store the same secret in a plaintext vault note and Vault-X.
+  4. Protect backups of ~/Library/Application Support/gnomad-slate/ (or equivalent) — they contain your encrypted vault and password hash.
+  5. Use full-disk encryption on your machine.
+
+────────────────────────────────────────
+
+RECOMMENDATIONS FOR DEVELOPERS
+------------------------------
+
+  • Do not add Tauri commands that return all secret values in one JSON blob.
+  • Do not log passwords, derived keys, or decrypted vault JSON.
+  • Use Zeroize / ZeroizeOnDrop on in-memory secret structs; Zeroizing for ephemeral copies.
+  • Run cargo test in src-tauri after crypto changes (see crypto::tests::v2_roundtrip).
+  • Document any new vault format with a version byte and migration path.
+
+────────────────────────────────────────
+
+RELATED DOCUMENTS
+-----------------
+
+  • SECURITY_MODEL.md — notes, clipboard, filesystem, shortcuts
+  • ARCHITECTURE.md — data flows and Tauri commands
+  • PRIVACY.md — what leaves the device
+  • USER_GUIDE.md — how to use Vault-X in the UI
+
+────────────────────────────────────────
+
+Built with ❤️ by Gnomad Studio 🦙
+
+════════════════════════════════════════════════════════════════════════
+Built with ❤️ by Gnomad Studio 🦙
+https://gnomadstudio.org
+════════════════════════════════════════════════════════════════════════

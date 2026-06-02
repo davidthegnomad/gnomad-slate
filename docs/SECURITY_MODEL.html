@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Security Model — Gnomad Slate</title>
+  <meta name="description" content="Security Model documentation for Gnomad Slate." />
+  <style>:root {
+  --bg-base: #0d1117;
+  --bg-panel: rgba(22, 27, 34, 0.95);
+  --bg-elevated: rgba(33, 38, 45, 0.98);
+  --border: rgba(48, 54, 61, 0.9);
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #818cf8;
+  --accent-secondary: #c084fc;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --pill-radius: 999px;
+  --radius: 12px;
+  --mesh:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.18), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 10% 30%, rgba(192, 132, 252, 0.1), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 95% 40%, rgba(129, 140, 248, 0.08), transparent 50%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg-base);
+  min-height: 100vh;
+}
+
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--mesh);
+  z-index: 0;
+}
+
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 1.5rem 1.25rem;
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.brand-icon { font-size: 1.5rem; }
+.brand h1 { font-size: 1rem; font-weight: 600; }
+
+.doc-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  word-break: break-all;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar a.toc-h3 { padding-left: 1.1rem; font-size: 0.78rem; }
+.sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.sidebar a.active { color: var(--accent); background: rgba(129, 140, 248, 0.12); }
+
+.content {
+  padding: 2rem 2.5rem 3rem;
+  max-width: 760px;
+}
+
+.hero { margin-bottom: 1.5rem; }
+.hero h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.formats { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+.formats a { color: var(--accent); }
+
+.doc-body h1 { font-size: 1.5rem; margin: 1.5rem 0 0.75rem; }
+.doc-body h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.doc-body h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; color: var(--accent); }
+.doc-body h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+
+.doc-body p { margin-bottom: 0.85rem; }
+.doc-body ul, .doc-body ol { margin: 0 0 1rem 1.25rem; color: var(--muted); }
+.doc-body li { margin-bottom: 0.35rem; }
+.doc-body li strong { color: var(--text); }
+
+.doc-body a { color: var(--accent); }
+.doc-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(255,255,255,0.08);
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  color: var(--accent-secondary);
+}
+
+.doc-body pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.doc-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 1rem 0;
+}
+
+.doc-body th, .doc-body td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-body th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.6rem 1rem;
+  margin: 1rem 0;
+  background: rgba(129, 140, 248, 0.08);
+  border-radius: 0 12px 12px 0;
+  color: var(--muted);
+}
+
+.doc-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.doc-footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.doc-footer a { color: var(--accent); text-decoration: none; }
+.doc-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="mesh-bg" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+          <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
+          <p class="doc-path">docs/SECURITY_MODEL.md</p>
+          <a href="#trust-boundaries" class="toc-h2">Trust boundaries</a>
+<a href="#vault-x-summary" class="toc-h2">Vault-X (summary)</a>
+<a href="#notes-filesystem" class="toc-h2">Notes filesystem</a>
+<a href="#clipboard-history" class="toc-h2">Clipboard history</a>
+<a href="#markdown-preview" class="toc-h2">Markdown preview</a>
+<a href="#global-shortcut-amp-window-behavior" class="toc-h2">Global shortcut &amp; window behavior</a>
+<a href="#network-exposure" class="toc-h2">Network exposure</a>
+<a href="#threat-summary" class="toc-h2">Threat summary</a>
+<a href="#pre-release-checklist" class="toc-h2">Pre-release checklist</a>
+        </nav>
+    <main class="content doc-body">
+      <header class="hero">
+        <h2>Security Model</h2>
+        <p class="formats">Also available: <a href="SECURITY_MODEL.md">Markdown</a> · <a href="SECURITY_MODEL.txt">Plain text</a></p>
+      </header>
+      <h1 id="security-model-gnomad-slate">Security Model — Gnomad Slate</h1><p><strong>Version:</strong> 0.1.0<br><strong>Last updated:</strong> June 2026</p>
+<p>For <strong>vault passwords and encrypted secrets</strong>, see the dedicated guide: <a href="VAULT_SECURITY.md">VAULT_SECURITY.md</a>.</p>
+<hr>
+<h2 id="trust-boundaries">Trust boundaries</h2><pre><code>┌─────────────────────────────────────────┐
+│  Trusted: Tauri shell, Rust backend    │
+│  Trusted: Bundled React UI              │
+├─────────────────────────────────────────┤
+│  Sensitive: vault.enc (encrypted)       │
+│  Sensitive: vault session (when unlocked, zeroized on lock) │
+├─────────────────────────────────────────┤
+│  User plaintext: notes/*.md             │
+│  User preview: markdown → HTML (sanitized scripts) │
+│  Shared: OS clipboard (other apps)      │
+└─────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="vault-x-summary">Vault-X (summary)</h2><table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Password storage</td>
+<td>Argon2id PHC hash only</td>
+</tr>
+<tr>
+<td>Secrets at rest</td>
+<td>AES-256-GCM (<code>vault.enc</code> v2)</td>
+</tr>
+<tr>
+<td>Secrets in memory</td>
+<td>Rust <code>VaultSession</code>; <code>ZeroizeOnDrop</code> on lock</td>
+</tr>
+<tr>
+<td>Secrets in UI</td>
+<td>Metadata only; brief reveal on Show</td>
+</tr>
+<tr>
+<td>Brute force</td>
+<td>5 failures → 30s lockout</td>
+</tr>
+</tbody></table>
+<p>Full detail: <a href="VAULT_SECURITY.md">VAULT_SECURITY.md</a>.</p>
+<hr>
+<h2 id="notes-filesystem">Notes filesystem</h2><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Data directory</td>
+<td><code>dirs::data_dir()/gnomad-slate</code></td>
+</tr>
+<tr>
+<td>Legacy migration</td>
+<td><code>~/.gemini/antigravity/scratch/slate_data</code> under user <code>$HOME</code></td>
+</tr>
+<tr>
+<td>Path traversal</td>
+<td>Reject <code>..</code>, slashes; canonical path check</td>
+</tr>
+<tr>
+<td>Encryption</td>
+<td>Notes are <strong>not</strong> encrypted — use Vault-X for secrets</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="clipboard-history">Clipboard history</h2><table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Filter module</td>
+<td><code>clipboard_filter.rs</code> — prefix blocklist + Shannon entropy (≥4.2 bits/char)</td>
+</tr>
+<tr>
+<td>Benign allowlist</td>
+<td>Emails, prose, http(s) URLs, camelCase identifiers ≤55 chars</td>
+</tr>
+<tr>
+<td>User toggle</td>
+<td><code>set_clipboard_filter_enabled</code> — disable filtering entirely</td>
+</tr>
+<tr>
+<td>Monitor efficiency</td>
+<td>macOS <code>changeCount</code>; adaptive 1s / 3s poll</td>
+</tr>
+<tr>
+<td>Size limit</td>
+<td>Skip entries &gt; 20 KB</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>In-memory only (max 15 items)</td>
+</tr>
+</tbody></table>
+<p><strong>Limitation:</strong> Heuristics can miss secrets or occasionally block unusual tokens. Vault-X is the correct store for credentials. Disable the filter in sidebar settings if you need full clipboard history for debugging.</p>
+<hr>
+<h2 id="markdown-preview">Markdown preview</h2><table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Renderer</td>
+<td><code>marked</code> (GFM) in <code>src/utils/markdown.ts</code></td>
+</tr>
+<tr>
+<td>Sanitization</td>
+<td>Strip <code>&lt;script&gt;</code> tags and inline <code>on*</code> handlers</td>
+</tr>
+<tr>
+<td>Trust</td>
+<td>User-authored note content — not a sandboxed iframe</td>
+</tr>
+</tbody></table>
+<p>Do not treat preview as safe for untrusted pasted HTML.</p>
+<hr>
+<h2 id="global-shortcut-amp-window-behavior">Global shortcut &amp; window behavior</h2><ul>
+<li><strong>Option+Space</strong> toggles visibility (parse errors logged, no panic).</li>
+<li><strong>Blur</strong> hides window — does not auto-lock vault.</li>
+</ul>
+<p><strong>Recommendation:</strong> Lock Vault-X manually when stepping away.</p>
+<hr>
+<h2 id="network-exposure">Network exposure</h2><table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Network</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>App core</td>
+<td>None — no telemetry or sync in v0.1</td>
+</tr>
+<tr>
+<td>Google Fonts (CSS <code>@import</code>)</td>
+<td>Optional — UI fonts only</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="threat-summary">Threat summary</h2><table>
+<thead>
+<tr>
+<th>Threat</th>
+<th>Mitigation</th>
+<th>Residual risk</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Stolen <code>vault.enc</code></td>
+<td>AES-GCM + strong password</td>
+<td>Offline brute force if password weak</td>
+</tr>
+<tr>
+<td>Secrets in RAM after lock</td>
+<td><code>ZeroizeOnDrop</code> on <code>SecretItem</code></td>
+<td>Swap / crash dumps while unlocked</td>
+</tr>
+<tr>
+<td>Secrets in WebView</td>
+<td>Rust-only store; minimal IPC</td>
+<td>Brief DOM exposure on Show</td>
+</tr>
+<tr>
+<td>Path traversal on notes</td>
+<td>Basename + canonicalize</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Clipboard sniffing</td>
+<td>Optional filter + user toggle</td>
+<td>Other apps read clipboard</td>
+</tr>
+<tr>
+<td>Markdown XSS</td>
+<td>Script stripping</td>
+<td>Not full HTML sanitizer</td>
+</tr>
+<tr>
+<td>Malware on device</td>
+<td>None (OS-level)</td>
+<td>Full compromise</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="pre-release-checklist">Pre-release checklist</h2><ul>
+<li><input disabled="" type="checkbox"> <code>cargo test</code> and <code>npm test</code> pass</li>
+<li><input disabled="" type="checkbox"> No secrets in repo or sample notes</li>
+<li><input disabled="" type="checkbox"> Tauri capabilities minimal</li>
+<li><input disabled="" type="checkbox"> Review <a href="VAULT_SECURITY.md">VAULT_SECURITY.md</a> after vault changes</li>
+<li><input disabled="" type="checkbox"> Verify clipboard filter toggle syncs to Rust monitor</li>
+</ul>
+<hr>
+<p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+
+      <footer class="doc-footer">
+        <p>Built with <span aria-label="love">❤️</span> by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const links = document.querySelectorAll(".sidebar a[href^='#']");
+    const sections = [...links].map((a) => document.querySelector(a.getAttribute("href")));
+    const onScroll = () => {
+      let cur = 0;
+      sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= 120) cur = i; });
+      links.forEach((l, i) => l.classList.toggle("active", i === cur));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>

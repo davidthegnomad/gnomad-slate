@@ -1,0 +1,102 @@
+════════════════════════════════════════════════════════════════════════
+  BUILD NARRATIVE
+  Gnomad Slate · docs/BUILD.md
+════════════════════════════════════════════════════════════════════════
+
+BUILD NARRATIVE — GNOMAD SLATE
+==============================
+
+Version: 0.1.0  
+Last updated: June 2026
+
+────────────────────────────────────────
+
+VISION
+------
+
+An always-available desktop scratchpad with encrypted credential storage — fast capture, markdown preview, minimal chrome, security-sensitive logic in Rust.
+
+────────────────────────────────────────
+
+PHASE 1 — CORE SCRATCHPAD ✓
+---------------------------
+
+  Deliverable                                |  Status
+  Tauri 2 + React + Vite scaffold            |  ✓     
+  Markdown notes (scratch + vault prefixes)  |  ✓     
+  Sidebar tabs and search                    |  ✓     
+  Debounced autosave (400 ms)                |  ✓     
+  48h ephemeral archive                      |  ✓     
+
+────────────────────────────────────────
+
+PHASE 2 — POWER FEATURES ✓
+--------------------------
+
+  Deliverable                     |  Status
+  Clipboard history capsule       |  ✓     
+  Command palette                 |  ✓     
+  Global shortcut (Option+Space)  |  ✓     
+  Hide on blur                    |  ✓     
+  Light / dark / system themes    |  ✓     
+
+────────────────────────────────────────
+
+PHASE 3 — VAULT-X SECURITY ✓
+----------------------------
+
+  Deliverable                                 |  Status
+  AES-256-GCM vault file (v2)                 |  ✓     
+  Argon2id master password + KDF              |  ✓     
+  Rust-only decrypted secrets                 |  ✓     
+  ZeroizeOnDrop on in-memory secrets          |  ✓     
+  Unlock rate limiting                        |  ✓     
+  Path traversal protection                   |  ✓     
+  Portable data directory + legacy migration  |  ✓     
+  Legacy v1 vault migration                   |  ✓     
+
+────────────────────────────────────────
+
+PHASE 4 — DOCUMENTATION ✓
+-------------------------
+
+  Deliverable                     |  Status
+  Full docs/ suite (MD/HTML/TXT)  |  ✓     
+  VAULT_SECURITY.md               |  ✓     
+  npm run docs:export             |  ✓     
+
+────────────────────────────────────────
+
+PHASE 5 — QUALITY & UX POLISH ✓
+-------------------------------
+
+  Deliverable                                           |  Status
+  Clipboard filter v2 (entropy + allowlist, UI toggle)  |  ✓     
+  macOS pasteboard changeCount + adaptive polling       |  ✓     
+  Markdown Edit / Split / Preview (marked)              |  ✓     
+  Rust unit tests (14)                                  |  ✓     
+  Vitest frontend tests (4)                             |  ✓     
+
+────────────────────────────────────────
+
+PHASE 6 — NEXT (PLANNED)
+------------------------
+
+  Deliverable                                   |  Status             
+  GitHub Actions CI (cargo test + npm test)     |  Planned            
+  Note save by filename (no orphan on rename)   |  Planned            
+  Touch ID / Keychain unlock                    |  Planned            
+  macOS notarization                            |  Planned            
+  Auto-lock vault on blur (optional setting)    |  Under consideration
+  Windows/Linux clipboard change notifications  |  Planned            
+
+See ROADMAP.md.
+
+────────────────────────────────────────
+
+Built with ❤️ by Gnomad Studio 🦙
+
+════════════════════════════════════════════════════════════════════════
+Built with ❤️ by Gnomad Studio 🦙
+https://gnomadstudio.org
+════════════════════════════════════════════════════════════════════════

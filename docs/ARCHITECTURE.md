@@ -1,0 +1,206 @@
+# Architecture — Gnomad Slate
+
+**Version:** 0.1.0  
+**Last updated:** June 2026
+
+---
+
+## System context
+
+Gnomad Slate is a **desktop scratchpad and secrets vault** — always-on capture for markdown notes, clipboard history, and encrypted credentials. It runs as a **Tauri 2** app with a React UI and a Rust backend that owns security-sensitive operations.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                     User (developer / operator)                   │
+└────────────────────────────┬─────────────────────────────────────┘
+                             │
+                             ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  Tauri 2 — global shortcut (Option+Space), hide on blur          │
+└────────────────────────────┬─────────────────────────────────────┘
+                             │
+         ┌───────────────────┴───────────────────┐
+         ▼                                       ▼
+┌─────────────────────┐               ┌─────────────────────┐
+│  React UI (Vite)    │   invoke()    │  Rust backend       │
+│  Notes · Preview    │◄─────────────►│  crypto · vault     │
+│  Palette · Clipboard│               │  filesystem · clip  │
+└─────────────────────┘               └──────────┬──────────┘
+                                                 │
+                                                 ▼
+                          <platform app data>/gnomad-slate/
+                          notes/ · vault.enc · vault_config.json
+```
+
+---
+
+## Layer responsibilities
+
+| Layer | Owns | Must not own |
+|-------|------|----------------|
+| **React (`App.tsx`)** | Layout, editor/preview UX, themes, palette | Secret values at rest; crypto |
+| **`src/utils/markdown.ts`** | Render + sanitize preview HTML | Persistence |
+| **`src/utils/theme.ts`** | Theme resolution helper | — |
+| **Tauri commands (`lib.rs`)** | IPC boundary, orchestration | Long-running UI state |
+| **`vault_session`** | Decrypted secrets (`ZeroizeOnDrop`) | Disk I/O (delegated) |
+| **`crypto`** | Argon2 + AES-GCM v1/v2 | Business logic |
+| **`filesystem`** | Notes paths, archive, validation | Vault encryption |
+| **`clipboard_filter`** | Sensitivity heuristics | Clipboard I/O |
+| **`clipboard`** | Monitor thread + history | Vault data |
+| **`pasteboard_macos`** | `changeCount` (macOS only) | — |
+| **`unlock_limiter`** | Failed unlock throttling | — |
+
+---
+
+## UI structure
+
+```
+App
+├── Sidebar
+│   ├── Search
+│   ├── Tabs: Scratchpad | Vaults | Secrets
+│   ├── Note list (filtered)
+│   ├── Clipboard filter toggle
+│   └── Theme toggles + shortcut hints
+├── Main area
+│   ├── Editor toolbar: Edit | Split | Preview
+│   ├── Textarea +/or markdown preview pane
+│   └── Vault-X panel (lock / table / add)     [secrets tab]
+├── Clipboard modal (⌘⇧V)
+└── Command palette (⌘P)
+```
+
+---
+
+## Data flow — notes
+
+```
+User types in editor
+        │
+        ▼
+scheduleSaveNote (400 ms debounce) — flush on note switch
+        │
+        ▼
+write_note(title, content, is_ephemeral)
+        │
+        ▼
+filesystem::write_note → notes/temp_*.md or vault_*.md
+        │
+        ▼
+list_notes on load / after save → update sidebar
+
+Parallel: editorContent → marked → sanitizePreviewHtml → preview pane
+```
+
+**Ephemeral archive:** On launch, `archive_notes` moves `temp_*` files older than 48h to `archive/`.
+
+---
+
+## Data flow — Vault-X
+
+```
+User unlocks (password once)
+        │
+        ▼
+unlock_vault → rate limit → Argon2 verify → decrypt vault.enc
+        │
+        ▼
+VaultSession in Rust (ZeroizeOnDrop secrets)
+        │
+        ▼
+list_secret_metadata → UI shows names/paths only
+        │
+        ├── Show → reveal_secret_value(index) → brief UI display
+        ├── Copy → copy_secret_to_clipboard → arboard (Zeroizing copy)
+        └── Add/Delete → mutate session → encrypt → vault.enc
+        │
+        ▼
+lock_vault → drop session, zeroize heap, clear UI
+```
+
+See [VAULT_SECURITY.md](VAULT_SECURITY.md) for cryptographic detail.
+
+---
+
+## Data flow — clipboard capsule
+
+```
+Background thread
+        │
+        ├── macOS: NSPasteboard.changeCount unchanged? → skip get_text, backoff to 3s
+        ├── Other: unchanged content streak → backoff to 3s
+        │
+        ▼
+arboard::get_text (only when likely changed)
+        │
+        ▼
+clipboard_filter::is_sensitive? (if filter enabled in AppState)
+        │
+        ▼
+ClipboardHistory (max 15, dedupe)
+        │
+        ▼
+get_clipboard_history ← UI on ⌘⇧V
+```
+
+Filter toggle: `set_clipboard_filter_enabled` / `get_clipboard_filter_enabled` (synced from sidebar + `localStorage`).
+
+---
+
+## Tauri commands
+
+| Command | Purpose |
+|---------|---------|
+| `list_notes` / `read_note` / `write_note` / `delete_note` | Markdown notes |
+| `archive_notes` | Ephemeral cleanup |
+| `is_vault_initialized` / `is_vault_unlocked` | Vault state |
+| `initialize_vault` / `unlock_vault` / `lock_vault` | Vault lifecycle |
+| `list_secret_metadata` | Safe list for UI |
+| `reveal_secret_value` | Single-value reveal |
+| `copy_secret_to_clipboard` | Copy without JS |
+| `add_secret` / `delete_secret` | CRUD + persist |
+| `get_clipboard_history` | Clipboard capsule |
+| `get_clipboard_filter_enabled` / `set_clipboard_filter_enabled` | Filter toggle |
+
+---
+
+## Security boundary
+
+| Surface | Trust level |
+|---------|-------------|
+| Rust vault session | Trusted — holds secrets when unlocked (zeroized on lock) |
+| React UI | Trusted code — metadata only; brief reveal on Show |
+| Note files | User content — plaintext on disk |
+| `vault.enc` | Encrypted at rest |
+| Markdown preview | User-authored HTML via `marked` + script stripping |
+| OS clipboard | Shared with other apps |
+
+---
+
+## Tauri configuration
+
+| Setting | Value |
+|---------|-------|
+| Product name | Gnomad Slate |
+| Identifier | `com.gnomadstudio.gnomad-slate` |
+| Dev URL | `http://localhost:1420` |
+| Default window | 800×600 |
+| CSP | `null` (local bundled UI) |
+
+Plugins: `opener`, `global-shortcut`.
+
+---
+
+## Extension points
+
+| Feature | Touch points |
+|---------|----------------|
+| Touch ID / Keychain | `biometrics.rs`, Tauri plugin |
+| Note update by filename | `filesystem::write_note`, `App.tsx` |
+| Event-driven clipboard (Windows/Linux) | `clipboard.rs`, platform modules |
+| Sync / backup | New Rust module |
+| Web build | Not planned — desktop-first secrets model |
+
+---
+
+Built with ❤️ by [Gnomad Studio](https://gnomadstudio.org) 🦙

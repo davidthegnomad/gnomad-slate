@@ -1,0 +1,64 @@
+════════════════════════════════════════════════════════════════════════
+  ROADMAP
+  Gnomad Slate · docs/ROADMAP.md
+════════════════════════════════════════════════════════════════════════
+
+ROADMAP — GNOMAD SLATE
+======================
+
+Version: 0.1.0 · Last updated: June 2026
+
+────────────────────────────────────────
+
+COMPLETED (V0.1.0)
+------------------
+
+  • Vault-X with Argon2id + AES-256-GCM v2
+  • Rust-only secrets + heap zeroization
+  • Unlock rate limiting
+  • Clipboard filter (entropy + blocklist) + sidebar toggle
+  • macOS pasteboard changeCount + adaptive polling
+  • Markdown Edit / Split / Preview
+  • 14 Rust + 4 Vitest tests
+  • Full documentation suite
+
+────────────────────────────────────────
+
+V0.2 — RELEASE & CI
+-------------------
+
+  • [ ] GitHub Actions: cargo test, npm test, npm run build on PR
+  • [ ] Release workflow (tag → installers)
+  • [ ] Note updates by filename (fix rename orphans)
+  • [ ] Bundle Inter fonts locally (offline UI)
+
+────────────────────────────────────────
+
+V0.3 — SECURITY UX
+------------------
+
+  • [ ] Optional auto-lock vault on window hide
+  • [ ] macOS Keychain / Touch ID for unlock
+  • [ ] Vault password strength meter
+  • [ ] Encrypted backup export (.slate bundle)
+  • [ ] Event-driven clipboard on Windows/Linux
+
+────────────────────────────────────────
+
+V1.0 — PRODUCTION
+-----------------
+
+  • [ ] macOS notarization
+  • [ ] Signed Windows builds
+  • [ ] Expanded E2E tests
+  • [ ] WCAG accessibility pass
+  • [ ] DOMPurify or stricter markdown preview sandbox
+
+────────────────────────────────────────
+
+Built with ❤️ by Gnomad Studio 🦙
+
+════════════════════════════════════════════════════════════════════════
+Built with ❤️ by Gnomad Studio 🦙
+https://gnomadstudio.org
+════════════════════════════════════════════════════════════════════════

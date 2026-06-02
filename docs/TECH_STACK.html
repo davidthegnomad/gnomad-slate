@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Technology Stack — Gnomad Slate</title>
+  <meta name="description" content="Technology Stack documentation for Gnomad Slate." />
+  <style>:root {
+  --bg-base: #0d1117;
+  --bg-panel: rgba(22, 27, 34, 0.95);
+  --bg-elevated: rgba(33, 38, 45, 0.98);
+  --border: rgba(48, 54, 61, 0.9);
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #818cf8;
+  --accent-secondary: #c084fc;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --pill-radius: 999px;
+  --radius: 12px;
+  --mesh:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.18), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 10% 30%, rgba(192, 132, 252, 0.1), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 95% 40%, rgba(129, 140, 248, 0.08), transparent 50%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg-base);
+  min-height: 100vh;
+}
+
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--mesh);
+  z-index: 0;
+}
+
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 1.5rem 1.25rem;
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.brand-icon { font-size: 1.5rem; }
+.brand h1 { font-size: 1rem; font-weight: 600; }
+
+.doc-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  word-break: break-all;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar a.toc-h3 { padding-left: 1.1rem; font-size: 0.78rem; }
+.sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.sidebar a.active { color: var(--accent); background: rgba(129, 140, 248, 0.12); }
+
+.content {
+  padding: 2rem 2.5rem 3rem;
+  max-width: 760px;
+}
+
+.hero { margin-bottom: 1.5rem; }
+.hero h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.formats { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+.formats a { color: var(--accent); }
+
+.doc-body h1 { font-size: 1.5rem; margin: 1.5rem 0 0.75rem; }
+.doc-body h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.doc-body h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; color: var(--accent); }
+.doc-body h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+
+.doc-body p { margin-bottom: 0.85rem; }
+.doc-body ul, .doc-body ol { margin: 0 0 1rem 1.25rem; color: var(--muted); }
+.doc-body li { margin-bottom: 0.35rem; }
+.doc-body li strong { color: var(--text); }
+
+.doc-body a { color: var(--accent); }
+.doc-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(255,255,255,0.08);
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  color: var(--accent-secondary);
+}
+
+.doc-body pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.doc-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 1rem 0;
+}
+
+.doc-body th, .doc-body td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-body th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.6rem 1rem;
+  margin: 1rem 0;
+  background: rgba(129, 140, 248, 0.08);
+  border-radius: 0 12px 12px 0;
+  color: var(--muted);
+}
+
+.doc-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.doc-footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.doc-footer a { color: var(--accent); text-decoration: none; }
+.doc-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="mesh-bg" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+          <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
+          <p class="doc-path">docs/TECH_STACK.md</p>
+          <a href="#executive-summary" class="toc-h2">Executive summary</a>
+<a href="#stack-overview" class="toc-h2">Stack overview</a>
+<a href="#frontend" class="toc-h2">Frontend</a>
+<a href="#backend-rust" class="toc-h2">Backend (Rust)</a>
+<a href="#build-amp-test-toolchain" class="toc-h2">Build &amp; test toolchain</a>
+<a href="#related-documents" class="toc-h2">Related documents</a>
+        </nav>
+    <main class="content doc-body">
+      <header class="hero">
+        <h2>Technology Stack</h2>
+        <p class="formats">Also available: <a href="TECH_STACK.md">Markdown</a> · <a href="TECH_STACK.txt">Plain text</a></p>
+      </header>
+      <h1 id="technology-stack-gnomad-slate">Technology Stack — Gnomad Slate</h1><p><strong>Document owner:</strong> Engineering<br><strong>Version:</strong> 0.1.0<br><strong>Last updated:</strong> June 2026</p>
+<hr>
+<h2 id="executive-summary">Executive summary</h2><p>Gnomad Slate is a <strong>Tauri 2 desktop application</strong> combining a <strong>React 19 + TypeScript</strong> UI with a <strong>Rust</strong> backend focused on cryptography, filesystem access, and clipboard monitoring. There is no backend server — all data stays on the user&#39;s machine.</p>
+<hr>
+<h2 id="stack-overview">Stack overview</h2><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Shell</strong></td>
+<td>Tauri 2</td>
+<td>Windowing, IPC, bundling</td>
+</tr>
+<tr>
+<td><strong>UI</strong></td>
+<td>React 19, TypeScript, Vite 7</td>
+<td>Single-page app</td>
+</tr>
+<tr>
+<td><strong>Markdown</strong></td>
+<td>marked 15</td>
+<td>Live preview rendering</td>
+</tr>
+<tr>
+<td><strong>Crypto</strong></td>
+<td>aes-gcm, argon2, sha2, zeroize</td>
+<td>Vault encryption &amp; memory hygiene</td>
+</tr>
+<tr>
+<td><strong>Clipboard</strong></td>
+<td>arboard + clipboard_filter</td>
+<td>Monitor, filter, copy secrets</td>
+</tr>
+<tr>
+<td><strong>macOS pasteboard</strong></td>
+<td>objc2-app-kit (macOS only)</td>
+<td><code>changeCount</code> without full read</td>
+</tr>
+<tr>
+<td><strong>Paths</strong></td>
+<td>dirs</td>
+<td>Portable app data directory</td>
+</tr>
+<tr>
+<td><strong>Serialization</strong></td>
+<td>serde, serde_json</td>
+<td>Notes metadata, vault JSON</td>
+</tr>
+<tr>
+<td><strong>Shortcuts</strong></td>
+<td>tauri-plugin-global-shortcut</td>
+<td>Option+Space toggle</td>
+</tr>
+<tr>
+<td><strong>Testing</strong></td>
+<td>cargo test, Vitest 3, jsdom</td>
+<td>14 Rust + 4 frontend tests</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="frontend">Frontend</h2><table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/App.tsx</code></td>
+<td>Notes editor, preview modes, vault UI, palette, clipboard modal</td>
+</tr>
+<tr>
+<td><code>src/App.css</code></td>
+<td>Themes, split editor, markdown preview styles</td>
+</tr>
+<tr>
+<td><code>src/utils/markdown.ts</code></td>
+<td><code>marked</code> render + script-tag sanitization</td>
+</tr>
+<tr>
+<td><code>src/utils/theme.ts</code></td>
+<td>Light/dark/system resolution</td>
+</tr>
+<tr>
+<td><code>src/main.tsx</code></td>
+<td>React entry</td>
+</tr>
+</tbody></table>
+<p><strong>State:</strong> React <code>useState</code> / <code>useRef</code> / <code>useCallback</code> / <code>useMemo</code> (no global store in v0.1).</p>
+<p><strong>Local preferences:</strong> <code>gnomad-theme</code>, <code>gnomad-clipboard-filter</code> in <code>localStorage</code>.</p>
+<p><strong>Persistence:</strong> Notes and vault via Tauri <code>invoke</code> — secrets never in <code>localStorage</code>.</p>
+<hr>
+<h2 id="backend-rust">Backend (Rust)</h2><pre><code>src-tauri/src/
+├── lib.rs                 # Tauri commands, AppState
+├── crypto.rs              # Argon2 KDF, AES-256-GCM v1/v2
+├── biometrics.rs          # Master password hash (Argon2id)
+├── vault_session.rs       # In-memory secrets (ZeroizeOnDrop)
+├── unlock_limiter.rs      # Failed unlock throttling
+├── filesystem.rs          # Notes, data dir, path validation
+├── clipboard_filter.rs    # Prefix blocklist + Shannon entropy
+├── clipboard.rs           # Adaptive monitor thread
+├── pasteboard_macos.rs    # NSPasteboard changeCount (macOS)
+└── main.rs
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Crate</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>aes-gcm</code></td>
+<td>Authenticated encryption for <code>vault.enc</code></td>
+</tr>
+<tr>
+<td><code>argon2</code></td>
+<td>Password hashing and key derivation</td>
+</tr>
+<tr>
+<td><code>zeroize</code></td>
+<td>Clear keys and <code>SecretItem</code> strings on drop</td>
+</tr>
+<tr>
+<td><code>sha2</code></td>
+<td>Legacy SHA-256 password migration only</td>
+</tr>
+<tr>
+<td><code>rand</code></td>
+<td>Nonces and salts</td>
+</tr>
+<tr>
+<td><code>arboard</code></td>
+<td>Clipboard monitor + secret copy</td>
+</tr>
+<tr>
+<td><code>objc2-app-kit</code> (macOS)</td>
+<td>Pasteboard change detection</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="build-amp-test-toolchain">Build &amp; test toolchain</h2><table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Node.js</td>
+<td>LTS</td>
+</tr>
+<tr>
+<td>Rust</td>
+<td>stable</td>
+</tr>
+<tr>
+<td>Vite</td>
+<td>Port <strong>1420</strong> (Tauri dev)</td>
+</tr>
+<tr>
+<td>Tauri CLI</td>
+<td><code>npm run tauri:dev</code> / <code>tauri:build</code></td>
+</tr>
+<tr>
+<td>Vitest</td>
+<td><code>npm test</code> — <code>src/**/*.test.ts</code></td>
+</tr>
+<tr>
+<td>cargo test</td>
+<td>14 unit tests in <code>src-tauri</code></td>
+</tr>
+</tbody></table>
+<pre><code class="language-bash">npm install
+npm run tauri dev
+npm test
+cd src-tauri &amp;&amp; cargo test
+npm run docs:export
+</code></pre>
+<hr>
+<h2 id="related-documents">Related documents</h2><ul>
+<li><a href="ARCHITECTURE.md">ARCHITECTURE.md</a> — flows and commands  </li>
+<li><a href="TEST_STRATEGY.md">TEST_STRATEGY.md</a> — coverage map  </li>
+<li><a href="BUILD_PLATFORMS.md">BUILD_PLATFORMS.md</a> — per-OS builds  </li>
+<li><a href="VAULT_SECURITY.md">VAULT_SECURITY.md</a> — crypto deep dive</li>
+</ul>
+<hr>
+<p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+
+      <footer class="doc-footer">
+        <p>Built with <span aria-label="love">❤️</span> by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const links = document.querySelectorAll(".sidebar a[href^='#']");
+    const sections = [...links].map((a) => document.querySelector(a.getAttribute("href")));
+    const onScroll = () => {
+      let cur = 0;
+      sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= 120) cur = i; });
+      links.forEach((l, i) => l.classList.toggle("active", i === cur));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>

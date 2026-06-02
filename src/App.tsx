@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { renderMarkdownToHtml } from "./utils/markdown";
+import { resolveTheme, type ThemePreference } from "./utils/theme";
 import "./App.css";
 
 interface Note {
@@ -15,10 +17,18 @@ interface ClipboardEntry {
   timestamp: number;
 }
 
-interface SecretItem {
+interface SecretMeta {
+  index: number;
   name: string;
   path: string;
-  value: string;
+}
+
+const NOTE_SAVE_DEBOUNCE_MS = 400;
+
+function invokeErrorMessage(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  return String(error);
 }
 
 function App() {
@@ -30,6 +40,7 @@ function App() {
   const [isEphemeral, setIsEphemeral] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "scratch" | "vault" | "secrets">("scratch");
+  const [editorView, setEditorView] = useState<"edit" | "preview" | "split">("edit");
 
   // --- Clipboard Capsule State ---
   const [showClipboard, setShowClipboard] = useState(false);
@@ -45,8 +56,9 @@ function App() {
   const [isVaultInitialized, setIsVaultInitialized] = useState(false);
   const [isVaultUnlocked, setIsVaultUnlocked] = useState(false);
   const [vaultPassword, setVaultPassword] = useState("");
-  const [vaultSecrets, setVaultSecrets] = useState<SecretItem[]>([]);
-  const [revealSecrets, setRevealSecrets] = useState<{ [key: string]: boolean }>({});
+  const [secretMetadata, setSecretMetadata] = useState<SecretMeta[]>([]);
+  const [revealedIndex, setRevealedIndex] = useState<number | null>(null);
+  const [revealedValue, setRevealedValue] = useState("");
   
   // Add Secret Form
   const [showAddSecret, setShowAddSecret] = useState(false);
@@ -55,37 +67,57 @@ function App() {
   const [newSecretValue, setNewSecretValue] = useState("");
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- Theme State ---
-  const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
-    return (localStorage.getItem("gnomad-theme") as "light" | "dark" | "system") || "dark";
+  const [theme, setTheme] = useState<ThemePreference>(() => {
+    return (localStorage.getItem("gnomad-theme") as ThemePreference) || "dark";
   });
+
+  const [clipboardFilterEnabled, setClipboardFilterEnabled] = useState(() => {
+    return localStorage.getItem("gnomad-clipboard-filter") !== "false";
+  });
+
+  const previewHtml = useMemo(
+    () => renderMarkdownToHtml(editorContent),
+    [editorContent]
+  );
 
   useEffect(() => {
     localStorage.setItem("gnomad-theme", theme);
-    
-    const updateTheme = () => {
-      let activeTheme = theme;
-      if (theme === "system") {
-        activeTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      }
-      
-      if (activeTheme === "light") {
+
+    const applyTheme = () => {
+      const active = resolveTheme(
+        theme,
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+      );
+      if (active === "light") {
         document.documentElement.setAttribute("data-theme", "light");
       } else {
         document.documentElement.removeAttribute("data-theme");
       }
     };
 
-    updateTheme();
+    applyTheme();
 
     if (theme === "system") {
       const media = window.matchMedia("(prefers-color-scheme: dark)");
-      const listener = () => updateTheme();
+      const listener = () => applyTheme();
       media.addEventListener("change", listener);
       return () => media.removeEventListener("change", listener);
     }
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("gnomad-clipboard-filter", String(clipboardFilterEnabled));
+    void invoke("set_clipboard_filter_enabled", { enabled: clipboardFilterEnabled });
+  }, [clipboardFilterEnabled]);
+
+  useEffect(() => {
+    void invoke<boolean>("get_clipboard_filter_enabled")
+      .then((enabled) => setClipboardFilterEnabled(enabled))
+      .catch(() => undefined);
+  }, []);
 
   // --- Palette Commands ---
   const paletteCommands = [
@@ -132,13 +164,34 @@ function App() {
   const checkVaultStatus = async () => {
     try {
       const initialized = await invoke<boolean>("is_vault_initialized");
+      const unlocked = await invoke<boolean>("is_vault_unlocked");
       setIsVaultInitialized(initialized);
+      setIsVaultUnlocked(unlocked);
+      if (unlocked) {
+        await loadSecretMetadata();
+      }
     } catch (e) {
       console.error(e);
     }
   };
 
-  const selectNote = (note: Note) => {
+  const loadSecretMetadata = async () => {
+    try {
+      const meta = await invoke<SecretMeta[]>("list_secret_metadata");
+      setSecretMetadata(meta);
+    } catch (e) {
+      console.error("Failed to load secret metadata:", e);
+      setSecretMetadata([]);
+    }
+  };
+
+  const clearRevealedSecret = () => {
+    setRevealedIndex(null);
+    setRevealedValue("");
+  };
+
+  const selectNote = async (note: Note) => {
+    await flushPendingSave();
     setSelectedNote(note);
     setEditorTitle(note.title);
     // Strip ephemeral comment if visual presentation
@@ -150,34 +203,63 @@ function App() {
     setIsEphemeral(note.is_ephemeral);
   };
 
-  // --- Autosave Note Function ---
-  const saveActiveNote = async (overrideContent?: string, overrideTitle?: string, forceVault?: boolean) => {
-    const titleToSave = overrideTitle !== undefined ? overrideTitle : editorTitle;
-    const contentToSave = overrideContent !== undefined ? overrideContent : editorContent;
-    const ephemeralState = forceVault !== undefined ? !forceVault : isEphemeral;
+  const saveActiveNote = useCallback(
+    async (overrideContent?: string, overrideTitle?: string, forceVault?: boolean) => {
+      const titleToSave = overrideTitle !== undefined ? overrideTitle : editorTitle;
+      const contentToSave = overrideContent !== undefined ? overrideContent : editorContent;
+      const ephemeralState = forceVault !== undefined ? !forceVault : isEphemeral;
 
-    if (!titleToSave.trim()) return;
+      if (!titleToSave.trim()) return;
 
-    try {
-      const saved = await invoke<Note>("write_note", {
-        title: titleToSave,
-        content: contentToSave,
-        isEphemeral: ephemeralState,
-      });
+      try {
+        const saved = await invoke<Note>("write_note", {
+          title: titleToSave,
+          content: contentToSave,
+          isEphemeral: ephemeralState,
+        });
 
-      // Update notes list in place
-      setNotes((prev) => {
-        const filtered = prev.filter((n) => n.filename !== saved.filename);
-        return [saved, ...filtered];
-      });
+        setNotes((prev) => {
+          const filtered = prev.filter((n) => n.filename !== saved.filename);
+          return [saved, ...filtered];
+        });
 
-      // Update selected note references
-      setSelectedNote(saved);
-      setIsEphemeral(saved.is_ephemeral);
-    } catch (e) {
-      console.error("Autosave failed:", e);
+        setSelectedNote(saved);
+        setIsEphemeral(saved.is_ephemeral);
+      } catch (e) {
+        console.error("Autosave failed:", e);
+      }
+    },
+    [editorTitle, editorContent, isEphemeral]
+  );
+
+  const flushPendingSave = useCallback(async () => {
+    if (saveDebounceRef.current) {
+      clearTimeout(saveDebounceRef.current);
+      saveDebounceRef.current = null;
+      await saveActiveNote();
     }
-  };
+  }, [saveActiveNote]);
+
+  const scheduleSaveNote = useCallback(
+    (overrideContent?: string, overrideTitle?: string, forceVault?: boolean) => {
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+      }
+      saveDebounceRef.current = setTimeout(() => {
+        saveDebounceRef.current = null;
+        void saveActiveNote(overrideContent, overrideTitle, forceVault);
+      }, NOTE_SAVE_DEBOUNCE_MS);
+    },
+    [saveActiveNote]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+      }
+    };
+  }, []);
 
   // --- Delete Note Function ---
   const deleteNote = async (filename: string, e: React.MouseEvent) => {
@@ -350,56 +432,85 @@ function App() {
       await invoke("initialize_vault", { password: vaultPassword });
       setIsVaultInitialized(true);
       setIsVaultUnlocked(true);
-      setVaultSecrets([]);
-    } catch (e: any) {
-      alert("Failed to initialize: " + e);
+      setVaultPassword("");
+      clearRevealedSecret();
+      await loadSecretMetadata();
+    } catch (e: unknown) {
+      alert("Failed to initialize: " + invokeErrorMessage(e));
     }
   };
 
   const handleUnlockVault = async () => {
     if (!vaultPassword) return;
     try {
-      const secretsJson = await invoke<string>("unlock_vault", { password: vaultPassword });
-      const secrets = JSON.parse(secretsJson);
-      setVaultSecrets(secrets);
+      await invoke("unlock_vault", { password: vaultPassword });
       setIsVaultUnlocked(true);
-    } catch (e) {
-      alert("Lock Screen: Authentication failed.");
+      setVaultPassword("");
+      clearRevealedSecret();
+      await loadSecretMetadata();
+    } catch (e: unknown) {
+      alert(invokeErrorMessage(e));
     }
   };
 
-  const handleSaveSecrets = async (updatedSecrets: SecretItem[]) => {
-    try {
-      await invoke("save_vault", {
-        decryptedJson: JSON.stringify(updatedSecrets),
-        password: vaultPassword,
-      });
-      setVaultSecrets(updatedSecrets);
-    } catch (e) {
-      alert("Failed to save credentials safely: " + e);
-    }
+  const handleLockVault = async () => {
+    await invoke("lock_vault");
+    setIsVaultUnlocked(false);
+    setVaultPassword("");
+    setSecretMetadata([]);
+    clearRevealedSecret();
   };
 
-  const handleAddSecret = () => {
+  const handleAddSecret = async () => {
     if (!newSecretName || !newSecretValue) return;
-    const newItem: SecretItem = {
-      name: newSecretName,
-      path: newSecretPath,
-      value: newSecretValue,
-    };
-    const updated = [...vaultSecrets, newItem];
-    handleSaveSecrets(updated);
-    
-    // Reset Form
-    setNewSecretName("");
-    setNewSecretPath("");
-    setNewSecretValue("");
-    setShowAddSecret(false);
+    try {
+      await invoke("add_secret", {
+        name: newSecretName,
+        path: newSecretPath,
+        value: newSecretValue,
+      });
+      setNewSecretName("");
+      setNewSecretPath("");
+      setNewSecretValue("");
+      setShowAddSecret(false);
+      clearRevealedSecret();
+      await loadSecretMetadata();
+    } catch (e: unknown) {
+      alert("Failed to add secret: " + invokeErrorMessage(e));
+    }
   };
 
-  const handleDeleteSecret = (idx: number) => {
-    const updated = vaultSecrets.filter((_, i) => i !== idx);
-    handleSaveSecrets(updated);
+  const handleDeleteSecret = async (index: number) => {
+    try {
+      await invoke("delete_secret", { index });
+      clearRevealedSecret();
+      await loadSecretMetadata();
+    } catch (e: unknown) {
+      alert("Failed to delete secret: " + invokeErrorMessage(e));
+    }
+  };
+
+  const handleCopySecret = async (index: number, name: string) => {
+    try {
+      await invoke("copy_secret_to_clipboard", { index });
+      alert(`${name} copied to clipboard!`);
+    } catch (e: unknown) {
+      alert("Copy failed: " + invokeErrorMessage(e));
+    }
+  };
+
+  const handleToggleReveal = async (index: number) => {
+    if (revealedIndex === index) {
+      clearRevealedSecret();
+      return;
+    }
+    try {
+      const value = await invoke<string>("reveal_secret_value", { index });
+      setRevealedIndex(index);
+      setRevealedValue(value);
+    } catch (e: unknown) {
+      alert("Could not reveal secret: " + invokeErrorMessage(e));
+    }
   };
 
   // --- Render Notes Filter list ---
@@ -496,6 +607,15 @@ function App() {
             <span>Cmd+Shift+V</span> <span>Clipboard</span>
           </div>
 
+          <label className="settings-toggle-row">
+            <input
+              type="checkbox"
+              checked={clipboardFilterEnabled}
+              onChange={(e) => setClipboardFilterEnabled(e.target.checked)}
+            />
+            <span>Filter sensitive clipboard items</span>
+          </label>
+
           <div className="theme-row">
             <button 
               className={`theme-toggle-btn ${theme === "light" ? "active" : ""}`}
@@ -549,7 +669,9 @@ function App() {
                   <button
                     className="action-btn accent"
                     style={{ padding: "10px", justifyContent: "center" }}
-                    onClick={isVaultInitialized ? handleUnlockVault() : handleInitVault}
+                    onClick={() =>
+                      isVaultInitialized ? handleUnlockVault() : handleInitVault()
+                    }
                   >
                     {isVaultInitialized ? "Unlock Vault" : "Initialize Vault"}
                   </button>
@@ -566,7 +688,7 @@ function App() {
                     <button className="action-btn" onClick={() => setShowAddSecret(true)}>
                       + Add Secret Key
                     </button>
-                    <button className="action-btn" onClick={() => { setIsVaultUnlocked(false); setVaultPassword(""); }}>
+                    <button className="action-btn" onClick={() => void handleLockVault()}>
                       Lock Vault
                     </button>
                   </div>
@@ -600,7 +722,7 @@ function App() {
                     </div>
                     <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
                       <button className="action-btn" onClick={() => setShowAddSecret(false)}>Cancel</button>
-                      <button className="action-btn accent" onClick={handleAddSecret}>Save Securely</button>
+                      <button className="action-btn accent" onClick={() => void handleAddSecret()}>Save Securely</button>
                     </div>
                   </div>
                 )}
@@ -616,34 +738,33 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {vaultSecrets.map((secret, idx) => (
-                        <tr key={idx}>
+                      {secretMetadata.map((secret) => (
+                        <tr key={`${secret.name}-${secret.index}`}>
                           <td style={{ fontWeight: "600" }}>{secret.name}</td>
                           <td style={{ fontStyle: "italic", color: "var(--text-muted)", fontSize: "11px" }}>
                             {secret.path || "Global / Unmapped"}
                           </td>
-                          <td 
+                          <td
                             className="key-mask"
-                            onClick={() => {
-                              navigator.clipboard.writeText(secret.value);
-                              alert(`${secret.name} copied to clipboard!`);
-                            }}
+                            onClick={() => void handleCopySecret(secret.index, secret.name)}
                           >
-                            {revealSecrets[secret.name] ? secret.value : "•••••••••••••••• (Click to Copy)"}
+                            {revealedIndex === secret.index
+                              ? revealedValue
+                              : "•••••••••••••••• (Click to Copy)"}
                           </td>
                           <td>
                             <div style={{ display: "flex", gap: "8px" }}>
-                              <button 
-                                className="tab-btn" 
+                              <button
+                                className="tab-btn"
                                 style={{ padding: "2px 6px" }}
-                                onClick={() => setRevealSecrets(prev => ({ ...prev, [secret.name]: !prev[secret.name] }))}
+                                onClick={() => void handleToggleReveal(secret.index)}
                               >
-                                {revealSecrets[secret.name] ? "Hide" : "Show"}
+                                {revealedIndex === secret.index ? "Hide" : "Show"}
                               </button>
-                              <button 
-                                className="tab-btn" 
+                              <button
+                                className="tab-btn"
                                 style={{ padding: "2px 6px", color: "#ef4444" }}
-                                onClick={() => handleDeleteSecret(idx)}
+                                onClick={() => void handleDeleteSecret(secret.index)}
                               >
                                 Delete
                               </button>
@@ -651,7 +772,7 @@ function App() {
                           </td>
                         </tr>
                       ))}
-                      {vaultSecrets.length === 0 && (
+                      {secretMetadata.length === 0 && (
                         <tr>
                           <td colSpan={4} style={{ textAlign: "center", color: "var(--text-muted)", padding: "24px" }}>
                             No secrets registered yet. Click "+ Add Secret Key" to secure your first credential!
@@ -676,12 +797,32 @@ function App() {
                   value={editorTitle}
                   onChange={(e) => {
                     setEditorTitle(e.target.value);
-                    saveActiveNote(editorContent, e.target.value);
+                    scheduleSaveNote(editorContent, e.target.value);
                   }}
                 />
               </div>
 
               <div className="toolbar-actions">
+                <div className="view-mode-row">
+                  <button
+                    className={`tab-btn ${editorView === "edit" ? "active" : ""}`}
+                    onClick={() => setEditorView("edit")}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className={`tab-btn ${editorView === "split" ? "active" : ""}`}
+                    onClick={() => setEditorView("split")}
+                  >
+                    Split
+                  </button>
+                  <button
+                    className={`tab-btn ${editorView === "preview" ? "active" : ""}`}
+                    onClick={() => setEditorView("preview")}
+                  >
+                    Preview
+                  </button>
+                </div>
                 <button
                   className={`action-btn ${isEphemeral ? "active-glow" : ""}`}
                   onClick={() => {
@@ -708,17 +849,27 @@ function App() {
               </div>
             </div>
 
-            <div className="editor-body">
-              <textarea
-                ref={editorRef}
-                className="text-textarea"
-                placeholder="Start typing your thoughts in raw Markdown... press ⌘P for actions, ⌘Shift+V for clipboard history capsule."
-                value={editorContent}
-                onChange={(e) => {
-                  setEditorContent(e.target.value);
-                  saveActiveNote(e.target.value, editorTitle);
-                }}
-              />
+            <div
+              className={`editor-body ${editorView === "split" ? "editor-body-split" : ""}`}
+            >
+              {(editorView === "edit" || editorView === "split") && (
+                <textarea
+                  ref={editorRef}
+                  className="text-textarea"
+                  placeholder="Start typing in Markdown… ⌘P palette · ⌘⇧V clipboard"
+                  value={editorContent}
+                  onChange={(e) => {
+                    setEditorContent(e.target.value);
+                    scheduleSaveNote(e.target.value, editorTitle);
+                  }}
+                />
+              )}
+              {(editorView === "preview" || editorView === "split") && (
+                <div
+                  className="markdown-preview"
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                />
+              )}
             </div>
           </div>
         )}

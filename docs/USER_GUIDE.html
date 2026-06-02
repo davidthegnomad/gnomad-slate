@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User Guide — Gnomad Slate</title>
+  <meta name="description" content="User Guide documentation for Gnomad Slate." />
+  <style>:root {
+  --bg-base: #0d1117;
+  --bg-panel: rgba(22, 27, 34, 0.95);
+  --bg-elevated: rgba(33, 38, 45, 0.98);
+  --border: rgba(48, 54, 61, 0.9);
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #818cf8;
+  --accent-secondary: #c084fc;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --pill-radius: 999px;
+  --radius: 12px;
+  --mesh:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.18), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 10% 30%, rgba(192, 132, 252, 0.1), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 95% 40%, rgba(129, 140, 248, 0.08), transparent 50%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg-base);
+  min-height: 100vh;
+}
+
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--mesh);
+  z-index: 0;
+}
+
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 1.5rem 1.25rem;
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.brand-icon { font-size: 1.5rem; }
+.brand h1 { font-size: 1rem; font-weight: 600; }
+
+.doc-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  word-break: break-all;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar a.toc-h3 { padding-left: 1.1rem; font-size: 0.78rem; }
+.sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.sidebar a.active { color: var(--accent); background: rgba(129, 140, 248, 0.12); }
+
+.content {
+  padding: 2rem 2.5rem 3rem;
+  max-width: 760px;
+}
+
+.hero { margin-bottom: 1.5rem; }
+.hero h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.formats { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+.formats a { color: var(--accent); }
+
+.doc-body h1 { font-size: 1.5rem; margin: 1.5rem 0 0.75rem; }
+.doc-body h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.doc-body h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; color: var(--accent); }
+.doc-body h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+
+.doc-body p { margin-bottom: 0.85rem; }
+.doc-body ul, .doc-body ol { margin: 0 0 1rem 1.25rem; color: var(--muted); }
+.doc-body li { margin-bottom: 0.35rem; }
+.doc-body li strong { color: var(--text); }
+
+.doc-body a { color: var(--accent); }
+.doc-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(255,255,255,0.08);
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  color: var(--accent-secondary);
+}
+
+.doc-body pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.doc-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 1rem 0;
+}
+
+.doc-body th, .doc-body td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-body th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.6rem 1rem;
+  margin: 1rem 0;
+  background: rgba(129, 140, 248, 0.08);
+  border-radius: 0 12px 12px 0;
+  color: var(--muted);
+}
+
+.doc-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.doc-footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.doc-footer a { color: var(--accent); text-decoration: none; }
+.doc-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="mesh-bg" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+          <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
+          <p class="doc-path">docs/USER_GUIDE.md</p>
+          <a href="#introduction" class="toc-h2">Introduction</a>
+<a href="#installation" class="toc-h2">Installation</a>
+<a href="#from-source-developers" class="toc-h3">From source (developers)</a>
+<a href="#installers" class="toc-h3">Installers</a>
+<a href="#main-interface" class="toc-h2">Main interface</a>
+<a href="#sidebar-tabs" class="toc-h3">Sidebar tabs</a>
+<a href="#writing-notes" class="toc-h2">Writing notes</a>
+<a href="#keyboard-shortcuts" class="toc-h2">Keyboard shortcuts</a>
+<a href="#clipboard-capsule" class="toc-h2">Clipboard capsule</a>
+<a href="#clipboard-filter-setting" class="toc-h3">Clipboard filter setting</a>
+<a href="#vault-x-encrypted-secrets" class="toc-h2">Vault-X (encrypted secrets)</a>
+<a href="#first-time-setup" class="toc-h3">First-time setup</a>
+<a href="#unlock-lock" class="toc-h3">Unlock / lock</a>
+<a href="#managing-secrets" class="toc-h3">Managing secrets</a>
+<a href="#failed-unlock-attempts" class="toc-h3">Failed unlock attempts</a>
+<a href="#themes-amp-settings" class="toc-h2">Themes &amp; settings</a>
+<a href="#data-location" class="toc-h2">Data location</a>
+<a href="#related-documents" class="toc-h2">Related documents</a>
+        </nav>
+    <main class="content doc-body">
+      <header class="hero">
+        <h2>User Guide</h2>
+        <p class="formats">Also available: <a href="USER_GUIDE.md">Markdown</a> · <a href="USER_GUIDE.txt">Plain text</a></p>
+      </header>
+      <h1 id="user-guide-gnomad-slate">User Guide — Gnomad Slate</h1><p><strong>Version:</strong> 0.1.0</p>
+<p>Studio: <a href="https://gnomadstudio.org">gnomadstudio.org</a></p>
+<hr>
+<h2 id="introduction">Introduction</h2><p><strong>Gnomad Slate</strong> is a desktop scratchpad for quick markdown notes, clipboard history, and an encrypted <strong>Vault-X</strong> registry for API keys and tokens. Press <strong>Option+Space</strong> (macOS) to summon the window from anywhere.</p>
+<hr>
+<h2 id="installation">Installation</h2><h3 id="from-source-developers">From source (developers)</h3><p><strong>Prerequisites:</strong> Node.js LTS, Rust stable, <a href="https://v2.tauri.app/start/prerequisites/">Tauri v2 prerequisites</a></p>
+<pre><code class="language-bash">cd 05_apps_and_extensions/gnomad-slate
+npm install
+npm run tauri dev
+</code></pre>
+<h3 id="installers">Installers</h3><p>When GitHub Releases are published, download <code>.dmg</code> (macOS), <code>.msi</code> / <code>.exe</code> (Windows), or <code>.deb</code> / AppImage (Linux). See <a href="BUILD_PLATFORMS.md">BUILD_PLATFORMS.md</a>.</p>
+<hr>
+<h2 id="main-interface">Main interface</h2><pre><code>┌─────────────────────────────────────────────────────────────┐
+│  Sidebar — search, tabs, notes, settings, themes            │
+├─────────────────────────────────────────────────────────────┤
+│  Toolbar: Edit | Split | Preview                            │
+│  Editor / preview  OR  Vault-X (Secrets tab)               │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="sidebar-tabs">Sidebar tabs</h3><table>
+<thead>
+<tr>
+<th>Tab</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Scratchpad</strong></td>
+<td>Ephemeral <code>temp_*.md</code> notes — auto-archived after 48 hours</td>
+</tr>
+<tr>
+<td><strong>Vaults</strong></td>
+<td>Persistent <code>vault_*.md</code> notes</td>
+</tr>
+<tr>
+<td><strong>Secrets</strong></td>
+<td>Vault-X encrypted credentials</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="writing-notes">Writing notes</h2><ol>
+<li>Type in the editor — title and body <strong>autosave after ~400 ms</strong> (debounced).</li>
+<li>Use <strong>Edit</strong>, <strong>Split</strong>, or <strong>Preview</strong> in the toolbar:<ul>
+<li><strong>Edit</strong> — raw markdown textarea only  </li>
+<li><strong>Split</strong> — editor and rendered preview side by side  </li>
+<li><strong>Preview</strong> — rendered markdown only</li>
+</ul>
+</li>
+<li><strong>Scratchpad Draft</strong> toggles ephemeral vs saved vault note.</li>
+<li><strong>New Draft</strong> creates a fresh ephemeral buffer.</li>
+<li>Delete notes with <strong>✕</strong> on the list item.</li>
+</ol>
+<p><strong>Search</strong> filters the current tab by title or content.</p>
+<p>Preview uses <a href="https://marked.js.org/">marked</a> with basic HTML sanitization (scripts stripped). Do not paste untrusted markdown expecting full XSS hardening.</p>
+<hr>
+<h2 id="keyboard-shortcuts">Keyboard shortcuts</h2><table>
+<thead>
+<tr>
+<th>Shortcut</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Option+Space</strong></td>
+<td>Show/hide app (global)</td>
+</tr>
+<tr>
+<td><strong>⌘P</strong></td>
+<td>Command palette</td>
+</tr>
+<tr>
+<td><strong>⌘⇧V</strong></td>
+<td>Clipboard history capsule</td>
+</tr>
+<tr>
+<td><strong>Esc</strong></td>
+<td>Close palette or clipboard modal</td>
+</tr>
+</tbody></table>
+<p>Command palette actions include JSON format, markdown cleanup, daily note helpers, and theme switching.</p>
+<hr>
+<h2 id="clipboard-capsule">Clipboard capsule</h2><ol>
+<li>Press <strong>⌘⇧V</strong>.</li>
+<li>Click an entry to paste into the editor.</li>
+<li>By default, likely credentials are <strong>filtered out</strong> (API key prefixes, private keys, high-entropy tokens).</li>
+</ol>
+<h3 id="clipboard-filter-setting">Clipboard filter setting</h3><p>In the sidebar footer, toggle <strong>Filter sensitive clipboard items</strong>:</p>
+<ul>
+<li><strong>On</strong> (default) — uses prefix blocklist + entropy heuristics; allows emails, prose, and typical camelCase identifiers.</li>
+<li><strong>Off</strong> — stores all clipboard text (except empty / oversized entries).</li>
+</ul>
+<p>Setting is saved in <code>localStorage</code> and synced to the Rust monitor.</p>
+<hr>
+<h2 id="vault-x-encrypted-secrets">Vault-X (encrypted secrets)</h2><h3 id="first-time-setup">First-time setup</h3><ol>
+<li>Open the <strong>Secrets</strong> tab.</li>
+<li>Enter a master password (<strong>minimum 8 characters</strong>).</li>
+<li>Click <strong>Initialize Vault</strong>.</li>
+</ol>
+<h3 id="unlock-lock">Unlock / lock</h3><ul>
+<li><strong>Unlock Vault</strong> — enter master password; password is cleared from the UI after success.</li>
+<li><strong>Lock Vault</strong> — drops the Rust session and zeroizes in-memory secrets.</li>
+</ul>
+<h3 id="managing-secrets">Managing secrets</h3><table>
+<thead>
+<tr>
+<th>Action</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Add</td>
+<td><strong>+ Add Secret Key</strong> → name, optional project path, value</td>
+</tr>
+<tr>
+<td>Copy</td>
+<td>Click masked cell — Rust copies to OS clipboard</td>
+</tr>
+<tr>
+<td>Show</td>
+<td><strong>Show</strong> / <strong>Hide</strong> — value fetched on demand only</td>
+</tr>
+<tr>
+<td>Delete</td>
+<td><strong>Delete</strong> on the row</td>
+</tr>
+</tbody></table>
+<p>Read <a href="VAULT_SECURITY.md">VAULT_SECURITY.md</a> for encryption and password details.</p>
+<h3 id="failed-unlock-attempts">Failed unlock attempts</h3><p>After <strong>5 wrong passwords</strong>, unlocking is blocked for <strong>30 seconds</strong>.</p>
+<hr>
+<h2 id="themes-amp-settings">Themes &amp; settings</h2><table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Light / Dark / System</strong></td>
+<td>Sidebar footer (<code>gnomad-theme</code>)</td>
+</tr>
+<tr>
+<td><strong>Clipboard filter</strong></td>
+<td>Sidebar checkbox (<code>gnomad-clipboard-filter</code>)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="data-location">Data location</h2><table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>macOS</strong></td>
+<td><code>~/Library/Application Support/gnomad-slate/</code></td>
+</tr>
+<tr>
+<td><strong>Linux</strong></td>
+<td><code>~/.local/share/gnomad-slate/</code> (typical)</td>
+</tr>
+<tr>
+<td><strong>Windows</strong></td>
+<td><code>%APPDATA%\gnomad-slate\</code></td>
+</tr>
+</tbody></table>
+<p>Legacy data may exist at <code>~/.gemini/antigravity/scratch/slate_data</code> and is migrated on first launch.</p>
+<p>Back up the app data folder to preserve notes and encrypted secrets.</p>
+<hr>
+<h2 id="related-documents">Related documents</h2><ul>
+<li><a href="VAULT_SECURITY.md">VAULT_SECURITY.md</a> — passwords and encryption  </li>
+<li><a href="TROUBLESHOOTING.md">TROUBLESHOOTING.md</a> — common issues  </li>
+<li><a href="PRIVACY.md">PRIVACY.md</a> — what stays local  </li>
+<li><a href="TEST_STRATEGY.md">TEST_STRATEGY.md</a> — automated tests</li>
+</ul>
+<hr>
+<p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+
+      <footer class="doc-footer">
+        <p>Built with <span aria-label="love">❤️</span> by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const links = document.querySelectorAll(".sidebar a[href^='#']");
+    const sections = [...links].map((a) => document.querySelector(a.getAttribute("href")));
+    const onScroll = () => {
+      let cur = 0;
+      sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= 120) cur = i; });
+      links.forEach((l, i) => l.classList.toggle("active", i === cur));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>

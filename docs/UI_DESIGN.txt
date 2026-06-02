@@ -1,0 +1,79 @@
+════════════════════════════════════════════════════════════════════════
+  UI DESIGN
+  Gnomad Slate · docs/UI_DESIGN.md
+════════════════════════════════════════════════════════════════════════
+
+UI DESIGN — GNOMAD SLATE
+========================
+
+Version: 0.1.0  
+Last updated: June 2026
+
+────────────────────────────────────────
+
+DESIGN INTENT
+-------------
+
+Obsidian glass aesthetic — dark-first, purple/violet accent (#8b5cf6), cyan for scratchpad state (#06b6d4). Light theme via [data-theme="light"] in src/App.css.
+
+────────────────────────────────────────
+
+LAYOUT
+------
+
+  Region            |  Behavior                                                                          
+  Sidebar (~280px)  |  Logo, search, tabs, scrollable note list, clipboard filter checkbox, theme toggles
+  Main              |  Toolbar (view modes + note actions) + editor and/or preview                       
+  Overlays          |  Centered modals for palette and clipboard                                         
+
+Default window: 800×600 — resizable via OS chrome.
+
+────────────────────────────────────────
+
+EDITOR VIEW MODES
+-----------------
+
+  Mode     |  UI                                                     
+  Edit     |  Full-width monospace textarea                          
+  Split    |  Textarea left, rendered markdown right (border divider)
+  Preview  |  Full-width .markdown-preview pane                      
+
+Toolbar uses compact tab-btn group: Edit | Split | Preview.
+
+Preview styling: headings, lists, code / pre blocks, readable line-height — matches app theme variables.
+
+────────────────────────────────────────
+
+COMPONENTS
+----------
+
+  Element            |  Style                               
+  Note list item     |  Card hover, selected border accent  
+  Badges             |  Scratch (cyan) vs Saved (violet)    
+  Vault lock screen  |  Centered lock icon, password field  
+  Secret table       |  Monospace masked values, row actions
+  Settings row       |  Checkbox for clipboard filter       
+
+────────────────────────────────────────
+
+TYPOGRAPHY
+----------
+
+  • UI: Inter (Google Fonts CDN)
+  • Preview code: JetBrains Mono where applicable
+
+────────────────────────────────────────
+
+ACCESSIBILITY
+-------------
+
+See ACCESSIBILITY.md. Preview pane supports text selection; modals need focus-trap work in v1.0.
+
+────────────────────────────────────────
+
+Built with ❤️ by Gnomad Studio 🦙
+
+════════════════════════════════════════════════════════════════════════
+Built with ❤️ by Gnomad Studio 🦙
+https://gnomadstudio.org
+════════════════════════════════════════════════════════════════════════

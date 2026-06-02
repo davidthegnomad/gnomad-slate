@@ -1,0 +1,103 @@
+# Test Strategy — Gnomad Slate
+
+**Version:** 0.1.0  
+**Last updated:** June 2026
+
+---
+
+## Summary
+
+| Suite | Command | Count | Scope |
+|-------|---------|-------|--------|
+| **Rust unit** | `cd src-tauri && cargo test` | **14** | Crypto, clipboard filter, filesystem, unlock limiter |
+| **Frontend unit** | `npm test` | **4** | Theme resolution, markdown preview |
+| **Manual / E2E** | `npm run tauri dev` | — | Full app flows |
+
+---
+
+## Rust tests (`cargo test`)
+
+### `crypto::tests`
+
+| Test | Validates |
+|------|-----------|
+| `v2_roundtrip` | AES-256-GCM encrypt/decrypt with Argon2-derived key |
+
+### `clipboard_filter::tests`
+
+| Test | Validates |
+|------|-----------|
+| `allows_camel_case_class_names` | No false positive on identifiers |
+| `allows_email_addresses` | Emails pass filter |
+| `allows_prose_with_spaces` | Natural language passes |
+| `blocks_github_pat_prefix` | `ghp_` tokens blocked |
+| `blocks_private_key_header` | PEM headers blocked |
+| `blocks_high_entropy_token` | Long random tokens blocked |
+| `entropy_empty_is_zero` | Entropy helper edge case |
+
+### `filesystem::tests`
+
+| Test | Validates |
+|------|-----------|
+| `rejects_path_traversal_filenames` | `../`, `..\`, wrong extension |
+| `accepts_valid_note_filenames` | `temp_` / `vault_` `.md` names |
+| `legacy_dir_is_under_user_home` | Legacy path uses `$HOME`, not hardcoded user |
+
+### `unlock_limiter::tests`
+
+| Test | Validates |
+|------|-----------|
+| `lockout_after_five_failures` | 5 failures → `check_allowed` errors |
+| `success_resets_lockout` | Success clears lockout |
+| `failures_below_threshold_allowed` | 4 failures still allowed |
+
+---
+
+## Frontend tests (Vitest + jsdom)
+
+Config: `vite.config.ts` → `test.environment: jsdom`
+
+| File | Tests |
+|------|-------|
+| `src/utils/theme.test.ts` | `resolveTheme` for system/light/dark |
+| `src/utils/markdown.test.ts` | Heading render; `<script>` stripping |
+
+```bash
+npm test
+npm run test:watch   # watch mode
+```
+
+---
+
+## Manual QA (required before release)
+
+See [QA_CHECKLIST.md](QA_CHECKLIST.md):
+
+- Vault unlock / lock / copy / show / delete  
+- Clipboard filter on vs off  
+- Edit / Split / Preview modes  
+- Debounced save + note switch flush  
+- 5 failed unlocks → lockout message  
+
+---
+
+## Planned automation
+
+- [ ] Tauri/WebDriver E2E (unlock flow, note save)
+- [ ] Rust integration test with temp notes directory
+- [ ] Clipboard monitor mock tests
+- [ ] CI: GitHub Actions running `cargo test` + `npm test` on PR
+
+---
+
+## Security regression
+
+After changes to `crypto.rs`, `biometrics.rs`, `vault_session.rs`, or `clipboard_filter.rs`:
+
+1. `cargo test`
+2. Manual vault smoke test ([QA_CHECKLIST.md](QA_CHECKLIST.md))
+3. Confirm React DevTools shows **no** full secrets array in state
+
+---
+
+Built with ❤️ by [Gnomad Studio](https://gnomadstudio.org) 🦙
