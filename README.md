@@ -1,6 +1,6 @@
 # Gnomad Slate
 
-[![Version](https://img.shields.io/badge/version-0.1.0-06b6d4)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.0--beta.1-06b6d4)](CHANGELOG.md)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%2019-8b5cf6)](docs/TECH_STACK.md)
 [![Security](https://img.shields.io/badge/vault-AES--256--GCM%20%2B%20Argon2id-333)](docs/VAULT_SECURITY.md)
 [![Tests](https://img.shields.io/badge/tests-14%20Rust%20%2B%204%20Vitest-333)](docs/TEST_STRATEGY.md)

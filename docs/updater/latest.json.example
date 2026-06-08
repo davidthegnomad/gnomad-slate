@@ -1,0 +1,15 @@
+{
+  "version": "2.1.0-beta.1",
+  "notes": "Gnomad Slate v2.1 beta for macOS.",
+  "pub_date": "2026-06-08T00:00:00Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "<contents of .sig file from release build>",
+      "url": "https://github.com/davidthegnomad/gnomad-slate/releases/download/v2.1.0-beta.1/Gnomad-Slate_2.1.0-beta.1_aarch64.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "<contents of .sig file from release build>",
+      "url": "https://github.com/davidthegnomad/gnomad-slate/releases/download/v2.1.0-beta.1/Gnomad-Slate_2.1.0-beta.1_x64.app.tar.gz"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Gnomad Slate",
-  "version": "0.1.0",
+  "version": "2.1.0-beta.1",
   "identifier": "com.gnomadstudio.gnomad-slate",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,9 +12,14 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Gnomad Slate",
-        "width": 800,
-        "height": 600
+        "width": 1120,
+        "height": 640,
+        "minWidth": 960,
+        "minHeight": 520,
+        "theme": "Dark",
+        "backgroundColor": "#0d0d10"
       }
     ],
     "security": {
@@ -23,6 +28,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -31,5 +37,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFBQTkyNUU2QzQyQjdEQwpSV1RjdDBKc1hwS3FBYlNCU1RjaXR6N2thWVhiYTRMUHFQZnM3b25FcTM2eklPQnVZQUNiODd3Swo=",
+      "endpoints": [
+        "https://github.com/davidthegnomad/gnomad-slate/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

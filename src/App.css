@@ -257,18 +257,24 @@ body {
 }
 
 .editor-header {
-  padding: 16px 24px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   background: rgba(10, 10, 15, 0.2);
+  overflow: visible;
+  position: relative;
+  z-index: 20;
 }
 
 .editor-title-container {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .editor-title-input {
@@ -278,7 +284,9 @@ body {
   font-weight: 600;
   color: var(--text-main);
   outline: none;
-  width: 300px;
+  width: 100%;
+  max-width: 280px;
+  min-width: 120px;
   font-family: var(--font-sans);
 }
 
@@ -286,6 +294,16 @@ body {
   display: flex;
   gap: 8px;
   align-items: center;
+  overflow: visible;
+  flex: 0 0 auto;
+}
+
+.save-feedback {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  white-space: nowrap;
+  padding-right: 4px;
 }
 
 .action-btn {
@@ -301,6 +319,7 @@ body {
   align-items: center;
   gap: 6px;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .action-btn:hover {
@@ -627,17 +646,6 @@ body {
   color: var(--text-main);
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideDown {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
 /* Theme Toggle Controls in Sidebar Footer */
 .theme-row {
   display: flex;
@@ -681,4 +689,161 @@ body {
   background: var(--bg-card);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   border: 1px solid var(--border-color);
+}
+
+/* Hover tooltips */
+.has-tooltip {
+  position: relative;
+}
+
+.has-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(20, 20, 28, 0.96);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: normal;
+  width: max-content;
+  max-width: 220px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  z-index: 1000;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="light"] .has-tooltip::after {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.has-tooltip:hover::after,
+.has-tooltip:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+.has-tooltip.tooltip-below::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+
+.delete-btn.has-tooltip::after {
+  bottom: calc(100% + 4px);
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.about-dialog {
+  width: 420px;
+}
+
+.about-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.about-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+}
+
+.about-close-btn:hover {
+  color: var(--text-main);
+}
+
+.about-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.about-logo-mark {
+  font-size: 28px;
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.about-app-name {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.about-version {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+
+.about-version-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.about-channel-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.about-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.about-update-status {
+  font-size: 12px;
+  color: var(--text-main);
+}
+
+.about-credit {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-color);
+}
+
+.about-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-color);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+
+.about-link:hover {
+  color: var(--accent-cyan);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }

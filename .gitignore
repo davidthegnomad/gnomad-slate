@@ -14,6 +14,7 @@ dist-ssr
 
 # Tauri / Rust
 src-tauri/target/
+.gnomad-updater.key
 
 # Editor directories and files
 .vscode/*

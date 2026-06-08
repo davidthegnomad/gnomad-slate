@@ -18,6 +18,8 @@
 
 - Confirm **Option+Space** isn't taken by another app.
 - Check terminal for `failed to register global shortcut` on startup.
+- On macOS, grant **Accessibility** permission: **System Settings → Privacy & Security → Accessibility** → enable Gnomad Slate (or `tauri-app` in dev).
+- **Click the Dock icon** to bring Slate back if the window hid when you switched apps.
 - On Linux, shortcut may differ — see `src-tauri/src/lib.rs`.
 
 ---

@@ -3,14 +3,18 @@ pub mod clipboard;
 pub mod clipboard_filter;
 pub mod crypto;
 pub mod filesystem;
+pub mod macos_app;
+pub mod menu;
 pub mod pasteboard_macos;
 pub mod unlock_limiter;
 pub mod vault_session;
 
+use serde::Serialize;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use arboard::Clipboard;
-use tauri::{AppHandle, Manager};
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+use tauri::{AppHandle, Manager, RunEvent};
+use tauri_plugin_global_shortcut::ShortcutState;
 
 use crate::clipboard::{ClipboardEntry, ClipboardHistory};
 use crate::filesystem::Note;
@@ -22,6 +26,28 @@ pub struct AppState {
     pub clipboard_filter_enabled: Arc<Mutex<bool>>,
     pub vault_session: Arc<VaultSessionState>,
     pub unlock_limiter: Arc<UnlockRateLimiterState>,
+}
+
+#[derive(Serialize)]
+pub struct AppVersionInfo {
+    pub version: String,
+    pub channel: String,
+    pub display_version: String,
+}
+
+#[tauri::command]
+fn get_app_version_info() -> AppVersionInfo {
+    let channel = if cfg!(target_os = "macos") {
+        "beta"
+    } else {
+        "alpha"
+    };
+
+    AppVersionInfo {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        channel: channel.to_string(),
+        display_version: format!("v2.1 {channel}"),
+    }
 }
 
 fn vault_file_path() -> std::path::PathBuf {
@@ -214,17 +240,93 @@ fn delete_secret(index: usize, state: tauri::State<AppState>) -> Result<(), Stri
     persist_vault(&state)
 }
 
+static INTENTIONALLY_HIDDEN: AtomicBool = AtomicBool::new(false);
+static APP_WAS_ACTIVE: AtomicBool = AtomicBool::new(true);
+
+fn show_main_window(app: &AppHandle) {
+    INTENTIONALLY_HIDDEN.store(false, Ordering::SeqCst);
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+fn hide_main_window(app: &AppHandle, intentional: bool) {
+    if intentional {
+        INTENTIONALLY_HIDDEN.store(true, Ordering::SeqCst);
+    }
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+}
+
 fn toggle_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        if let Ok(visible) = window.is_visible() {
-            if visible {
-                let _ = window.hide();
-            } else {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+        match window.is_visible() {
+            Ok(true) => hide_main_window(app, true),
+            _ => show_main_window(app),
         }
     }
+}
+
+fn maybe_show_on_app_activate(app: &AppHandle) {
+    let active = crate::macos_app::application_is_active();
+    let was_active = APP_WAS_ACTIVE.swap(active, Ordering::SeqCst);
+
+    if !active || was_active || INTENTIONALLY_HIDDEN.load(Ordering::SeqCst) {
+        return;
+    }
+
+    if let Some(window) = app.get_webview_window("main") {
+        if window.is_visible().unwrap_or(true) == false {
+            show_main_window(app);
+        }
+    }
+}
+
+fn register_global_shortcut(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    app.plugin(
+        tauri_plugin_global_shortcut::Builder::new()
+            .with_shortcuts(["Alt+Space"])?
+            .with_handler(|app, _shortcut, event| {
+                if event.state() == ShortcutState::Pressed {
+                    toggle_window(app);
+                }
+            })
+            .build(),
+    )?;
+    eprintln!("Gnomad Slate: registered global shortcut Alt+Space (Option+Space on macOS)");
+    Ok(())
+}
+
+fn attach_hide_on_blur(window: &tauri::WebviewWindow) {
+    let hide_generation = Arc::new(AtomicU64::new(0));
+    let window_for_events = window.clone();
+
+    window_for_events.clone().on_window_event(move |event| {
+        match event {
+            tauri::WindowEvent::Focused(false) => {
+                let generation = hide_generation.fetch_add(1, Ordering::SeqCst) + 1;
+                let w = window_for_events.clone();
+                let hide_generation = hide_generation.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                    if hide_generation.load(Ordering::SeqCst) != generation {
+                        return;
+                    }
+                    if w.is_focused().unwrap_or(true) {
+                        return;
+                    }
+                    let _ = w.hide();
+                });
+            }
+            tauri::WindowEvent::Focused(true) => {
+                hide_generation.fetch_add(1, Ordering::SeqCst);
+            }
+            _ => {}
+        }
+    });
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -239,11 +341,10 @@ pub fn run() {
     let vault_session = Arc::new(Mutex::new(None));
     let unlock_limiter = Arc::new(Mutex::new(unlock_limiter::UnlockRateLimiter::new()));
 
-    let shortcut = "Option+Space";
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(AppState {
             clipboard_history,
             clipboard_filter_enabled,
@@ -251,38 +352,26 @@ pub fn run() {
             unlock_limiter,
         })
         .setup(move |app| {
-            let handle = app.handle().clone();
+            if let Err(e) = menu::install_app_menu(&app.handle()) {
+                eprintln!("Gnomad Slate: failed to install app menu: {e}");
+            }
 
-            use tauri_plugin_global_shortcut::ShortcutState;
-
-            match shortcut.parse::<Shortcut>() {
-                Ok(shortcut_parsed) => {
-                    let _ = app.global_shortcut().on_shortcut(
-                        shortcut_parsed,
-                        move |_app, _shortcut, event| {
-                            if event.state() == ShortcutState::Pressed {
-                                toggle_window(&handle);
-                            }
-                        },
-                    );
-                }
-                Err(e) => {
-                    eprintln!("Gnomad Slate: failed to register global shortcut: {e}");
-                }
+            #[cfg(desktop)]
+            if let Err(e) = register_global_shortcut(&app.handle()) {
+                eprintln!("Gnomad Slate: failed to register global shortcut: {e}");
             }
 
             if let Some(window) = app.get_webview_window("main") {
-                let w = window.clone();
-                window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Focused(false) = event {
-                        let _ = w.hide();
-                    }
-                });
+                attach_hide_on_blur(&window);
             }
 
             Ok(())
         })
+        .on_menu_event(|app, event| {
+            menu::handle_menu_event(app, event.id().0.as_str());
+        })
         .invoke_handler(tauri::generate_handler![
+            get_app_version_info,
             get_clipboard_history,
             get_clipboard_filter_enabled,
             set_clipboard_filter_enabled,
@@ -302,6 +391,13 @@ pub fn run() {
             add_secret,
             delete_secret,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            match event {
+                RunEvent::Reopen { .. } => show_main_window(app_handle),
+                RunEvent::MainEventsCleared => maybe_show_on_app_activate(app_handle),
+                _ => {}
+            }
+        });
 }

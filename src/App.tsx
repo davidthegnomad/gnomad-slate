@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type ButtonHTMLAttributes } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { AboutDialog } from "./components/AboutDialog";
 import { renderMarkdownToHtml } from "./utils/markdown";
 import { resolveTheme, type ThemePreference } from "./utils/theme";
 import "./App.css";
@@ -23,7 +26,31 @@ interface SecretMeta {
   path: string;
 }
 
+interface AppVersionInfo {
+  version: string;
+  channel: string;
+  display_version: string;
+}
+
 const NOTE_SAVE_DEBOUNCE_MS = 400;
+
+function TipButton({
+  tip,
+  tipBelow = false,
+  className,
+  children,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { tip: string; tipBelow?: boolean }) {
+  return (
+    <button
+      {...rest}
+      className={`has-tooltip${tipBelow ? " tooltip-below" : ""}${className ? ` ${className}` : ""}`}
+      data-tooltip={tip}
+    >
+      {children}
+    </button>
+  );
+}
 
 function invokeErrorMessage(error: unknown): string {
   if (typeof error === "string") return error;
@@ -66,8 +93,35 @@ function App() {
   const [newSecretPath, setNewSecretPath] = useState("");
   const [newSecretValue, setNewSecretValue] = useState("");
 
+  const [showAbout, setShowAbout] = useState(false);
+  const [aboutAutoCheck, setAboutAutoCheck] = useState(false);
+  const [appVersionLabel, setAppVersionLabel] = useState("v2.1 beta");
+
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorTitleRef = useRef(editorTitle);
+  const editorContentRef = useRef(editorContent);
+  const isEphemeralRef = useRef(isEphemeral);
+  const activeTabRef = useRef(activeTab);
+
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const saveFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    editorTitleRef.current = editorTitle;
+  }, [editorTitle]);
+
+  useEffect(() => {
+    editorContentRef.current = editorContent;
+  }, [editorContent]);
+
+  useEffect(() => {
+    isEphemeralRef.current = isEphemeral;
+  }, [isEphemeral]);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
 
   // --- Theme State ---
   const [theme, setTheme] = useState<ThemePreference>(() => {
@@ -96,6 +150,9 @@ function App() {
       } else {
         document.documentElement.removeAttribute("data-theme");
       }
+      const win = getCurrentWindow();
+      void win.setTheme(active);
+      void win.setBackgroundColor(active === "light" ? "#f3f4f6" : "#0d0d10");
     };
 
     applyTheme();
@@ -117,6 +174,49 @@ function App() {
     void invoke<boolean>("get_clipboard_filter_enabled")
       .then((enabled) => setClipboardFilterEnabled(enabled))
       .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    void invoke<AppVersionInfo>("get_app_version_info")
+      .then((info) => setAppVersionLabel(info.display_version))
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const unsubs: Array<Promise<() => void>> = [
+      listen("menu-about", () => {
+        setAboutAutoCheck(false);
+        setShowAbout(true);
+      }),
+      listen("menu-check-updates", () => {
+        setAboutAutoCheck(true);
+        setShowAbout(true);
+      }),
+    ];
+
+    return () => {
+      void Promise.all(unsubs).then((handlers) => {
+        handlers.forEach((unlisten) => unlisten());
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      const win = getCurrentWindow();
+      const size = await win.innerSize();
+      if (size.width < 960) {
+        await win.setSize(new LogicalSize(1120, 640));
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (saveFeedbackTimerRef.current) {
+        clearTimeout(saveFeedbackTimerRef.current);
+      }
+    };
   }, []);
 
   // --- Palette Commands ---
@@ -202,6 +302,112 @@ function App() {
     setEditorContent(content);
     setIsEphemeral(note.is_ephemeral);
   };
+
+  const showSaveFeedback = useCallback((message: string) => {
+    setSaveFeedback(message);
+    if (saveFeedbackTimerRef.current) {
+      clearTimeout(saveFeedbackTimerRef.current);
+    }
+    saveFeedbackTimerRef.current = setTimeout(() => {
+      setSaveFeedback(null);
+      saveFeedbackTimerRef.current = null;
+    }, 1500);
+  }, []);
+
+  const saveNoteNow = useCallback(
+    async (options?: { promoteToSaved?: boolean }) => {
+      if (activeTabRef.current === "secrets") {
+        return;
+      }
+
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+        saveDebounceRef.current = null;
+      }
+
+      const title = editorTitleRef.current.trim() || "Untitled note";
+      const content = editorContentRef.current;
+      const promote = options?.promoteToSaved ?? false;
+      const ephemeralState = promote ? false : isEphemeralRef.current;
+
+      if (!editorTitleRef.current.trim()) {
+        setEditorTitle(title);
+        editorTitleRef.current = title;
+      }
+
+      try {
+        const saved = await invoke<Note>("write_note", {
+          title,
+          content,
+          isEphemeral: ephemeralState,
+        });
+
+        setNotes((prev) => {
+          const filtered = prev.filter((n) => n.filename !== saved.filename);
+          return [saved, ...filtered];
+        });
+
+        setSelectedNote(saved);
+        setIsEphemeral(saved.is_ephemeral);
+        isEphemeralRef.current = saved.is_ephemeral;
+        showSaveFeedback(promote || !saved.is_ephemeral ? "Saved" : "Draft saved");
+      } catch (e) {
+        console.error("Save failed:", e);
+        showSaveFeedback("Save failed");
+      }
+    },
+    [showSaveFeedback]
+  );
+
+  const createNewDraft = useCallback(async () => {
+    await saveNoteNow();
+
+    const draftTitle = `Note_${new Date().toLocaleTimeString().replace(/\s/g, "_")}`;
+    setEditorTitle(draftTitle);
+    setEditorContent("");
+    setIsEphemeral(true);
+    setActiveTab("scratch");
+    editorTitleRef.current = draftTitle;
+    editorContentRef.current = "";
+    isEphemeralRef.current = true;
+    activeTabRef.current = "scratch";
+
+    try {
+      const saved = await invoke<Note>("write_note", {
+        title: draftTitle,
+        content: "",
+        isEphemeral: true,
+      });
+      setNotes((prev) => {
+        const filtered = prev.filter((n) => n.filename !== saved.filename);
+        return [saved, ...filtered];
+      });
+      setSelectedNote(saved);
+    } catch (e) {
+      console.error("Failed to create draft:", e);
+    }
+  }, [saveNoteNow]);
+
+  const handleEditorShortcut = useCallback(
+    (e: React.KeyboardEvent) => {
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      if (!isCmdOrCtrl) {
+        return;
+      }
+
+      if (!e.shiftKey && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        void saveNoteNow({ promoteToSaved: isEphemeralRef.current });
+        return;
+      }
+
+      if (!e.shiftKey && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        void createNewDraft();
+      }
+    },
+    [saveNoteNow, createNewDraft]
+  );
 
   const saveActiveNote = useCallback(
     async (overrideContent?: string, overrideTitle?: string, forceVault?: boolean) => {
@@ -289,6 +495,26 @@ function App() {
         return;
       }
 
+      // ⌘S: Save current note (promotes scratchpad drafts to Saved)
+      if (isCmdOrCtrl && !e.shiftKey && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (activeTabRef.current !== "secrets") {
+          void saveNoteNow({ promoteToSaved: isEphemeralRef.current });
+        }
+        return;
+      }
+
+      // ⌘N: New scratchpad draft
+      if (isCmdOrCtrl && !e.shiftKey && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (activeTabRef.current !== "secrets") {
+          void createNewDraft();
+        }
+        return;
+      }
+
       // ⌘P: Open Command Palette
       if (isCmdOrCtrl && e.key.toLowerCase() === "p") {
         e.preventDefault();
@@ -308,9 +534,9 @@ function App() {
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editorContent, editorTitle, isEphemeral]);
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [saveNoteNow, createNewDraft]);
 
   // --- Clipboard History Fetch ---
   const loadClipboardHistory = async () => {
@@ -533,7 +759,9 @@ function App() {
           <h1 className="logo-text">
             <span style={{ fontSize: "18px" }}>✦</span> Gnomad Slate
           </h1>
-          <span style={{ fontSize: "10px", color: "var(--text-muted)", fontStyle: "italic" }}>v2.0</span>
+          <span style={{ fontSize: "10px", color: "var(--text-muted)", fontStyle: "italic" }}>
+            {appVersionLabel}
+          </span>
         </div>
 
         <div className="search-box">
@@ -547,24 +775,27 @@ function App() {
         </div>
 
         <div className="tabs-row">
-          <button
+          <TipButton
             className={`tab-btn ${activeTab === "scratch" ? "active" : ""}`}
+            tip="Quick notes that auto-archive after 48 hours"
             onClick={() => setActiveTab("scratch")}
           >
             Scratchpad
-          </button>
-          <button
+          </TipButton>
+          <TipButton
             className={`tab-btn ${activeTab === "vault" ? "active" : ""}`}
+            tip="Saved notes that stay until you delete them"
             onClick={() => setActiveTab("vault")}
           >
-            Vaults
-          </button>
-          <button
+            Saved
+          </TipButton>
+          <TipButton
             className={`tab-btn ${activeTab === "secrets" ? "active" : ""}`}
+            tip="Password-protected store for API keys and tokens"
             onClick={() => setActiveTab("secrets")}
           >
             Secrets
-          </button>
+          </TipButton>
         </div>
 
         <div className="notes-list">
@@ -584,7 +815,8 @@ function App() {
                 {note.content.replace("<!-- ephemeral -->\n", "").substring(0, 40) || "Empty note"}
               </p>
               <button
-                className="delete-btn"
+                className="delete-btn has-tooltip"
+                data-tooltip="Delete this note permanently"
                 onClick={(e) => deleteNote(note.filename, e)}
               >
                 ✕
@@ -593,7 +825,7 @@ function App() {
           ))}
           {activeTab !== "secrets" && filteredNotes.length === 0 && (
             <p style={{ padding: "16px", color: "var(--text-muted)", fontSize: "12px", textAlign: "center" }}>
-              No notes found. Create a new buffer!
+              No notes found. Click New Draft to start writing.
             </p>
           )}
         </div>
@@ -607,7 +839,7 @@ function App() {
             <span>Cmd+Shift+V</span> <span>Clipboard</span>
           </div>
 
-          <label className="settings-toggle-row">
+          <label className="settings-toggle-row has-tooltip" data-tooltip="Hide likely passwords and API keys from clipboard history">
             <input
               type="checkbox"
               checked={clipboardFilterEnabled}
@@ -617,24 +849,27 @@ function App() {
           </label>
 
           <div className="theme-row">
-            <button 
+            <TipButton
               className={`theme-toggle-btn ${theme === "light" ? "active" : ""}`}
+              tip="Use a light background and dark text"
               onClick={() => setTheme("light")}
             >
               ☀️ Light
-            </button>
-            <button 
+            </TipButton>
+            <TipButton
               className={`theme-toggle-btn ${theme === "dark" ? "active" : ""}`}
+              tip="Use a dark background — default for Slate"
               onClick={() => setTheme("dark")}
             >
               🌙 Dark
-            </button>
-            <button 
+            </TipButton>
+            <TipButton
               className={`theme-toggle-btn ${theme === "system" ? "active" : ""}`}
+              tip="Match your Mac's light or dark mode"
               onClick={() => setTheme("system")}
             >
               🖥️ System
-            </button>
+            </TipButton>
           </div>
         </div>
       </aside>
@@ -667,8 +902,13 @@ function App() {
                     }}
                   />
                   <button
-                    className="action-btn accent"
+                    className="action-btn accent has-tooltip"
                     style={{ padding: "10px", justifyContent: "center" }}
+                    data-tooltip={
+                      isVaultInitialized
+                        ? "Unlock your encrypted secrets with your master password"
+                        : "Create a new encrypted vault with a master password"
+                    }
                     onClick={() =>
                       isVaultInitialized ? handleUnlockVault() : handleInitVault()
                     }
@@ -685,12 +925,20 @@ function App() {
                     <p style={{ color: "var(--text-muted)", fontSize: "12px" }}>Highly secure offline keys, tokens, and SSH configurations</p>
                   </div>
                   <div style={{ display: "flex", gap: "8px" }}>
-                    <button className="action-btn" onClick={() => setShowAddSecret(true)}>
+                    <TipButton
+                      className="action-btn"
+                      tip="Add an API key, token, or password to the encrypted vault"
+                      onClick={() => setShowAddSecret(true)}
+                    >
                       + Add Secret Key
-                    </button>
-                    <button className="action-btn" onClick={() => void handleLockVault()}>
+                    </TipButton>
+                    <TipButton
+                      className="action-btn"
+                      tip="Lock the vault and clear secrets from memory"
+                      onClick={() => void handleLockVault()}
+                    >
                       Lock Vault
-                    </button>
+                    </TipButton>
                   </div>
                 </div>
 
@@ -721,8 +969,8 @@ function App() {
                       />
                     </div>
                     <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                      <button className="action-btn" onClick={() => setShowAddSecret(false)}>Cancel</button>
-                      <button className="action-btn accent" onClick={() => void handleAddSecret()}>Save Securely</button>
+                      <TipButton className="action-btn" tip="Close the add-secret form without saving" onClick={() => setShowAddSecret(false)}>Cancel</TipButton>
+                      <TipButton className="action-btn accent" tip="Encrypt and store this credential in the vault" onClick={() => void handleAddSecret()}>Save Securely</TipButton>
                     </div>
                   </div>
                 )}
@@ -745,7 +993,8 @@ function App() {
                             {secret.path || "Global / Unmapped"}
                           </td>
                           <td
-                            className="key-mask"
+                            className="key-mask has-tooltip"
+                            data-tooltip="Click to copy this secret to your clipboard"
                             onClick={() => void handleCopySecret(secret.index, secret.name)}
                           >
                             {revealedIndex === secret.index
@@ -754,20 +1003,22 @@ function App() {
                           </td>
                           <td>
                             <div style={{ display: "flex", gap: "8px" }}>
-                              <button
+                              <TipButton
                                 className="tab-btn"
                                 style={{ padding: "2px 6px" }}
+                                tip={revealedIndex === secret.index ? "Hide the secret value on screen" : "Temporarily show the secret value on screen"}
                                 onClick={() => void handleToggleReveal(secret.index)}
                               >
                                 {revealedIndex === secret.index ? "Hide" : "Show"}
-                              </button>
-                              <button
+                              </TipButton>
+                              <TipButton
                                 className="tab-btn"
                                 style={{ padding: "2px 6px", color: "#ef4444" }}
+                                tip="Remove this secret from the vault permanently"
                                 onClick={() => void handleDeleteSecret(secret.index)}
                               >
                                 Delete
-                              </button>
+                              </TipButton>
                             </div>
                           </td>
                         </tr>
@@ -793,8 +1044,9 @@ function App() {
                 <input
                   type="text"
                   className="editor-title-input"
-                  placeholder="Untitled Buffer"
+                  placeholder="Untitled note"
                   value={editorTitle}
+                  onKeyDown={handleEditorShortcut}
                   onChange={(e) => {
                     setEditorTitle(e.target.value);
                     scheduleSaveNote(editorContent, e.target.value);
@@ -803,49 +1055,58 @@ function App() {
               </div>
 
               <div className="toolbar-actions">
+                {saveFeedback && (
+                  <span className="save-feedback" aria-live="polite">
+                    {saveFeedback}
+                  </span>
+                )}
                 <div className="view-mode-row">
-                  <button
+                  <TipButton
                     className={`tab-btn ${editorView === "edit" ? "active" : ""}`}
+                    tip="Edit raw markdown in the text area"
                     onClick={() => setEditorView("edit")}
                   >
                     Edit
-                  </button>
-                  <button
+                  </TipButton>
+                  <TipButton
                     className={`tab-btn ${editorView === "split" ? "active" : ""}`}
+                    tip="See your markdown and preview side by side"
                     onClick={() => setEditorView("split")}
                   >
                     Split
-                  </button>
-                  <button
+                  </TipButton>
+                  <TipButton
                     className={`tab-btn ${editorView === "preview" ? "active" : ""}`}
+                    tip="View rendered markdown only"
                     onClick={() => setEditorView("preview")}
                   >
                     Preview
-                  </button>
+                  </TipButton>
                 </div>
-                <button
+                <TipButton
                   className={`action-btn ${isEphemeral ? "active-glow" : ""}`}
+                  tipBelow
+                  tip={
+                    isEphemeral
+                      ? "Scratchpad draft — auto-archives after 48 hours. Click or press ⌘S to save permanently."
+                      : "Saved permanently. Click to mark as a scratchpad draft again."
+                  }
                   onClick={() => {
                     const nextVal = !isEphemeral;
                     setIsEphemeral(nextVal);
                     saveActiveNote(editorContent, editorTitle, !nextVal);
                   }}
                 >
-                  {isEphemeral ? "✧ Scratchpad Draft" : "🔒 Promoted to Vault"}
-                </button>
-                <button
+                  {isEphemeral ? "✧ Scratchpad Draft" : "🔒 Saved Note"}
+                </TipButton>
+                <TipButton
                   className="action-btn"
-                  onClick={() => {
-                    // Create a new blank slate note buffer
-                    const dummyTitle = `Note_${new Date().toLocaleTimeString().replace(/\s/g, "_")}`;
-                    setEditorTitle(dummyTitle);
-                    setEditorContent("");
-                    setIsEphemeral(true);
-                    saveActiveNote("", dummyTitle, false);
-                  }}
+                  tipBelow
+                  tip="Start a fresh scratchpad note (⌘N)"
+                  onClick={() => void createNewDraft()}
                 >
                   New Draft
-                </button>
+                </TipButton>
               </div>
             </div>
 
@@ -856,8 +1117,9 @@ function App() {
                 <textarea
                   ref={editorRef}
                   className="text-textarea"
-                  placeholder="Start typing in Markdown… ⌘P palette · ⌘⇧V clipboard"
+                  placeholder="Start typing in Markdown… ⌘S save · ⌘N new draft · ⌘P palette"
                   value={editorContent}
+                  onKeyDown={handleEditorShortcut}
                   onChange={(e) => {
                     setEditorContent(e.target.value);
                     scheduleSaveNote(e.target.value, editorTitle);
@@ -936,6 +1198,15 @@ function App() {
           </div>
         </div>
       )}
+
+      <AboutDialog
+        open={showAbout}
+        autoCheckUpdates={aboutAutoCheck}
+        onClose={() => {
+          setShowAbout(false);
+          setAboutAutoCheck(false);
+        }}
+      />
     </div>
   );
 }

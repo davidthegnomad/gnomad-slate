@@ -77,6 +77,8 @@ Preview uses [marked](https://marked.js.org/) with basic HTML sanitization (scri
 | **⌘⇧V** | Clipboard history capsule |
 | **Esc** | Close palette or clipboard modal |
 
+Slate **hides when you focus another app**. Bring it back with **Option+Space** or by **clicking the Dock icon**.
+
 Command palette actions include JSON format, markdown cleanup, daily note helpers, and theme switching.
 
 ---
