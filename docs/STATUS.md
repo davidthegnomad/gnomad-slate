@@ -1,8 +1,8 @@
 # Project Status — Gnomad Slate
 
-**Version:** 0.1.0  
-**Phase:** v0.1.0 shipped — development-ready, pre-distribution  
-**Last updated:** 2 June 2026  
+**Version:** 2.1.0-beta.1  
+**Phase:** Beta — macOS Apple Silicon released; Windows/Linux alpha next  
+**Last updated:** 9 June 2026  
 **Roadmap:** [ROADMAP.md](ROADMAP.md)
 
 ---
@@ -16,8 +16,8 @@
 | **Repo** | [github.com/davidthegnomad/gnomad-slate](https://github.com/davidthegnomad/gnomad-slate) (private) |
 | **Default branch** | `main` |
 | **Latest commit** | `00548ae` — *Harden vault security, add UX polish, and ship full documentation suite* |
-| **GitHub release** | None yet (local builds only) |
-| **CI** | Not configured (planned v0.2) |
+| **GitHub release** | [v2.1.0-beta.1](https://github.com/davidthegnomad/gnomad-slate/releases/tag/v2.1.0-beta.1) — macOS Apple Silicon |
+| **CI** | Manual release; GitHub Actions planned v0.2 |
 | **Tests** | 14 Rust (`cargo test`) · 4 Vitest (`npm test`) — passing |
 
 ---

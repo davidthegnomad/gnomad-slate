@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 
 ---
 
+## [2.1.0-beta.1] — June 2026
+
+### Added
+
+- About menu with version info and Check for Updates (Tauri updater)
+- Custom app icon and refreshed window sizing
+- Cmd+S / Cmd+N shortcuts; platform-aware beta labels
+
+### Release
+
+- GitHub Release `v2.1.0-beta.1` with macOS Apple Silicon artifacts (`.app.tar.gz`, `.zip`)
+- Marketing and downloads on [davidcole.cloud/apps/slate](https://davidcole.cloud/apps/slate)
+
+---
+
 ## [0.1.0] — June 2026
 
 ### Added

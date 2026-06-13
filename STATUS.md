@@ -1,6 +1,6 @@
 # Status: Gnomad Slate
 
-**Last Updated:** 2026-06-02
+**Last Updated:** 2026-06-09
 **Overall:** 🟢 Active
 
 > **Detailed status:** [docs/STATUS.md](docs/STATUS.md)
@@ -11,12 +11,12 @@ Desktop scratchpad + encrypted Vault-X secrets — quick capture summoned via Op
 
 ## Recent Accomplishments
 
-- v0.1.0 feature-complete for dogfooding
-- 14 Rust + 4 Vitest tests passing
+- v2.1.0-beta.1 macOS Apple Silicon release on GitHub
+- About menu, in-app updater, platform UX polish
 
 ## Blockers / Dependencies
 
-- No GitHub release yet — local builds only
+- Windows/Linux installers — next release wave
 
 ## Next Actions
 

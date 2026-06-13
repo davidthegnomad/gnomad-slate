@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ButtonHTMLAttributes } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { invoke, listen, getPlatformWindow, LogicalSize } from "./utils/ipc";
 import { AboutDialog } from "./components/AboutDialog";
 import { renderMarkdownToHtml } from "./utils/markdown";
 import { resolveTheme, type ThemePreference } from "./utils/theme";
@@ -150,7 +148,7 @@ function App() {
       } else {
         document.documentElement.removeAttribute("data-theme");
       }
-      const win = getCurrentWindow();
+      const win = getPlatformWindow();
       void win.setTheme(active);
       void win.setBackgroundColor(active === "light" ? "#f3f4f6" : "#0d0d10");
     };
@@ -203,7 +201,7 @@ function App() {
 
   useEffect(() => {
     void (async () => {
-      const win = getCurrentWindow();
+      const win = getPlatformWindow();
       const size = await win.innerSize();
       if (size.width < 960) {
         await win.setSize(new LogicalSize(1120, 640));
@@ -541,6 +539,20 @@ function App() {
   // --- Clipboard History Fetch ---
   const loadClipboardHistory = async () => {
     try {
+      // In the browser extension, capture the active clipboard text first
+      if (typeof window !== "undefined" && !(window as any).__TAURI_INTERNALS__ && typeof navigator !== "undefined" && navigator.clipboard?.readText) {
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text && text.trim()) {
+            await new Promise<void>((resolve) => {
+              chrome.runtime.sendMessage({ type: "record-clipboard", text }, () => resolve());
+            });
+          }
+        } catch (clipErr) {
+          // silent ignore if permission not yet granted
+        }
+      }
+
       const history = await invoke<ClipboardEntry[]>("get_clipboard_history");
       setClipboardHistory(history);
     } catch (e) {

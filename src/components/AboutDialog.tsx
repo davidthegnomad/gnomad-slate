@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { invoke, openUrl } from "../utils/ipc";
 import type { Update } from "@tauri-apps/plugin-updater";
 import {
   checkForUpdates,
