@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ButtonHTMLAttributes } from "react";
 import { invoke, listen, getPlatformWindow, LogicalSize } from "./utils/ipc";
 import { AboutDialog } from "./components/AboutDialog";
+import UnsavedChangesModal from "./components/UnsavedChangesModal";
 import { renderMarkdownToHtml } from "./utils/markdown";
+import { modKeyLabel, modShortcut } from "./utils/modKeyLabel";
 import { resolveTheme, type ThemePreference } from "./utils/theme";
 import "./App.css";
 
@@ -94,6 +96,8 @@ function App() {
   const [showAbout, setShowAbout] = useState(false);
   const [aboutAutoCheck, setAboutAutoCheck] = useState(false);
   const [appVersionLabel, setAppVersionLabel] = useState("v2.1 beta");
+  const [closePromptOpen, setClosePromptOpen] = useState(false);
+  const pendingWindowClose = useRef(false);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -219,9 +223,9 @@ function App() {
 
   // --- Palette Commands ---
   const paletteCommands = [
-    { name: "Format JSON", desc: "Prettifies and validates raw JSON in the editor", shortcut: "⌘F" },
-    { name: "Prettify Markdown", desc: "Cleans list structure and header spacing", shortcut: "⌘L" },
-    { name: "Copy as Raw HTML", desc: "Compiles Markdown selection to raw HTML & copies", shortcut: "⌘⇧H" },
+    { name: "Format JSON", desc: "Prettifies and validates raw JSON in the editor", shortcut: `${modKeyLabel()}+F` },
+    { name: "Prettify Markdown", desc: "Cleans list structure and header spacing", shortcut: `${modKeyLabel()}+L` },
+    { name: "Copy as Raw HTML", desc: "Compiles Markdown to sanitized HTML and copies", shortcut: `${modKeyLabel()}+Shift+H` },
     { name: "Create Daily Note", desc: "Creates or appends to daily journal note", shortcut: "⌘D" },
     { name: "Append to Daily Note", desc: "Appends selected text directly to today's log", shortcut: "⌘⌥D" },
     { name: "Export selection to GitHub Gist", desc: "Publishes selected text as an online gist", shortcut: "⌘G" },
@@ -334,14 +338,19 @@ function App() {
       }
 
       try {
+        const previousFilename = selectedNote?.filename ?? null;
         const saved = await invoke<Note>("write_note", {
           title,
           content,
           isEphemeral: ephemeralState,
+          previousFilename,
         });
 
         setNotes((prev) => {
           const filtered = prev.filter((n) => n.filename !== saved.filename);
+          if (previousFilename && previousFilename !== saved.filename) {
+            return [saved, ...filtered.filter((n) => n.filename !== previousFilename)];
+          }
           return [saved, ...filtered];
         });
 
@@ -354,7 +363,7 @@ function App() {
         showSaveFeedback("Save failed");
       }
     },
-    [showSaveFeedback]
+    [showSaveFeedback, selectedNote]
   );
 
   const createNewDraft = useCallback(async () => {
@@ -375,6 +384,7 @@ function App() {
         title: draftTitle,
         content: "",
         isEphemeral: true,
+        previousFilename: null,
       });
       setNotes((prev) => {
         const filtered = prev.filter((n) => n.filename !== saved.filename);
@@ -416,14 +426,19 @@ function App() {
       if (!titleToSave.trim()) return;
 
       try {
+        const previousFilename = selectedNote?.filename ?? null;
         const saved = await invoke<Note>("write_note", {
           title: titleToSave,
           content: contentToSave,
           isEphemeral: ephemeralState,
+          previousFilename,
         });
 
         setNotes((prev) => {
           const filtered = prev.filter((n) => n.filename !== saved.filename);
+          if (previousFilename && previousFilename !== saved.filename) {
+            return [saved, ...filtered.filter((n) => n.filename !== previousFilename)];
+          }
           return [saved, ...filtered];
         });
 
@@ -433,7 +448,7 @@ function App() {
         console.error("Autosave failed:", e);
       }
     },
-    [editorTitle, editorContent, isEphemeral]
+    [editorTitle, editorContent, isEphemeral, selectedNote]
   );
 
   const flushPendingSave = useCallback(async () => {
@@ -480,6 +495,27 @@ function App() {
       console.error(e);
     }
   };
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen("window-close-requested", () => {
+      if (saveDebounceRef.current) {
+        pendingWindowClose.current = true;
+        setClosePromptOpen(true);
+        return;
+      }
+      void (async () => {
+        await saveNoteNow();
+        const win = await getPlatformWindow();
+        await win.destroy();
+      })();
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [saveNoteNow]);
 
   // --- Keydown Event Handling for Universal Hotkeys ---
   useEffect(() => {
@@ -618,16 +654,13 @@ function App() {
       }
 
       case "Copy as Raw HTML": {
-        // Standard markdown headers to HTML tags translation mock
-        let html = editorContent
-          .replace(/^# (.*$)/gim, "<h1>$1</h1>")
-          .replace(/^## (.*$)/gim, "<h2>$2</h2>")
-          .replace(/^\- (.*$)/gim, "<li>$1</li>")
-          .replace(/\*\*(.*)\*\*/gim, "<strong>$1</strong>")
-          .replace(/\*(.*)\*/gim, "<em>$1</em>");
-        
-        navigator.clipboard.writeText(html);
-        alert("Renders compiled & HTML copied to Clipboard!");
+        const html = renderMarkdownToHtml(editorContent);
+        try {
+          await invoke("copy_text_to_clipboard", { text: html });
+          alert("Markdown compiled to HTML and copied to clipboard.");
+        } catch {
+          alert("Could not copy HTML to clipboard.");
+        }
         break;
       }
 
@@ -644,6 +677,7 @@ function App() {
             title,
             content: newContent,
             isEphemeral: false,
+            previousFilename: null,
           });
           loadNotes();
           alert(`Appended to ${title}!`);
@@ -845,10 +879,13 @@ function App() {
         {/* Dynamic Sidebar footer command shortcut tips */}
         <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border-color)", fontSize: "11px", color: "var(--text-muted)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-            <span>Cmd+P</span> <span>Palette</span>
+            <span>{modShortcut("P")}</span> <span>Palette</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>Cmd+Shift+V</span> <span>Clipboard</span>
+            <span>{modShortcut("V", { shift: true })}</span> <span>Clipboard</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "10px" }}>
+            <span>Alt+Space</span> <span>Summon</span>
           </div>
 
           <label className="settings-toggle-row has-tooltip" data-tooltip="Hide likely passwords and API keys from clipboard history">
@@ -1219,6 +1256,30 @@ function App() {
           setAboutAutoCheck(false);
         }}
       />
+      {closePromptOpen && (
+        <UnsavedChangesModal
+          noteTitle={editorTitle}
+          onSave={() => {
+            void (async () => {
+              await flushPendingSave();
+              setClosePromptOpen(false);
+              const win = await getPlatformWindow();
+              await win.destroy();
+            })();
+          }}
+          onDiscard={() => {
+            void (async () => {
+              setClosePromptOpen(false);
+              const win = await getPlatformWindow();
+              await win.destroy();
+            })();
+          }}
+          onCancel={() => {
+            pendingWindowClose.current = false;
+            setClosePromptOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

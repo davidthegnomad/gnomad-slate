@@ -19,7 +19,7 @@
 
 - [ ] `npm run tauri dev` — hot reload
 - [ ] `npm run tauri build` — `.app` + `.dmg`
-- [ ] Option+Space shortcut
+- [ ] Global shortcut: **Option+Space** (macOS) / **Alt+Space** (Windows/Linux)
 - [ ] Pasteboard `changeCount` skips idle reads (lower CPU when unchanged)
 - [ ] App data: `~/Library/Application Support/gnomad-slate/`
 - [ ] Legacy migration from `~/.gemini/.../slate_data` if present
@@ -29,7 +29,8 @@
 ## Windows
 
 - [ ] Build on Windows VM or runner
-- [ ] Global shortcut (Alt+Space fallback)
+- [ ] Global shortcut **Alt+Space** (not Option+Space)
+- [ ] Window does **not** hide on blur (macOS-only behavior)
 - [ ] App data: `%APPDATA%\gnomad-slate\`
 - [ ] WebView2 installed
 - [ ] Adaptive clipboard polling (no changeCount — 1s/3s backoff)

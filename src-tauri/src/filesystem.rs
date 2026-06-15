@@ -167,7 +167,12 @@ pub fn read_note(filename: &str) -> Result<String, String> {
     fs::read_to_string(file_path).map_err(|e| format!("Failed to read note: {}", e))
 }
 
-pub fn write_note(title: &str, content: &str, is_ephemeral: bool) -> Result<Note, String> {
+pub fn write_note(
+    title: &str,
+    content: &str,
+    is_ephemeral: bool,
+    previous_filename: Option<&str>,
+) -> Result<Note, String> {
     let notes_dir = get_notes_dir();
 
     let safe_title = title.replace(|c: char| !c.is_alphanumeric() && c != '_' && c != '-', "_");
@@ -200,6 +205,17 @@ pub fn write_note(title: &str, content: &str, is_ephemeral: bool) -> Result<Note
 
     file.write_all(full_content.as_bytes())
         .map_err(|e| format!("Failed to write note content: {}", e))?;
+
+    if let Some(prev) = previous_filename {
+        if prev != filename {
+            if validate_note_filename(prev).is_ok() {
+                let prev_path = notes_dir.join(prev);
+                if prev_path.exists() {
+                    let _ = fs::remove_file(prev_path);
+                }
+            }
+        }
+    }
 
     let last_modified = get_current_time();
 

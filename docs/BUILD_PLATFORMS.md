@@ -6,9 +6,9 @@
 
 ## Prerequisites
 
-- Node.js LTS
+- Node.js LTS (22 recommended)
 - Rust stable (`rustup`)
-- [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS
+- [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 ```bash
 cd 05_apps_and_extensions/gnomad-slate
@@ -21,18 +21,18 @@ npm run build
 ## Development
 
 ```bash
-# Desktop (Vite on :1420 + Tauri shell)
-npm run tauri dev
+# Desktop (Vite on :1420 + Tauri) — Wayland default on Linux
+npm run tauri:dev
+
+# Linux WebKit/GPU fallback (X11)
+npm run tauri:dev:x11
 
 # Frontend only
 npm run dev
 
 # Tests
-npm test                    # Vitest (4 tests)
-cd src-tauri && cargo test  # Rust (14 tests)
-
-# Regenerate docs HTML/TXT
-npm run docs:export
+npm test
+cd src-tauri && cargo test
 ```
 
 ---
@@ -40,24 +40,53 @@ npm run docs:export
 ## Production build
 
 ```bash
-npm run tauri build
+npm run tauri:build
+# CI (signing via env when configured)
+npm run tauri:build:ci
 ```
 
-Artifacts under `src-tauri/target/release/bundle/`:
-
-| Platform | Output |
-|----------|--------|
+| Platform | Artifacts |
+|----------|-----------|
 | **macOS** | `.app`, `.dmg` |
 | **Windows** | `.msi`, `.exe` |
 | **Linux** | `.deb`, `.rpm`, AppImage |
 
-Build on the **target OS** for reliable results. macOS builds link `objc2-app-kit` for pasteboard `changeCount`.
+---
+
+## Platform notes
+
+### Summon shortcut
+| OS | Shortcut |
+|----|----------|
+| macOS | `Option+Space` |
+| Windows / Linux | `Alt+Space` |
+
+### Linux dependencies
+
+```bash
+bash scripts/install-linux-deps.sh
+```
+
+Requires **webkit2gtk 4.1** dev headers (Tauri 2).
+
+### macOS
+- Hide-on-blur when losing focus (launcher behavior)
+- Pasteboard `changeCount` reduces idle clipboard polling
+
+### Windows
+- WebView2 Evergreen bootstrapper configured in `tauri.conf.json`
+- Window stays visible when clicking away (no hide-on-blur)
 
 ---
 
-## Repository
+## CI
 
-**GitHub:** [github.com/davidthegnomad/gnomad-slate](https://github.com/davidthegnomad/gnomad-slate) (private)
+- **PR/push:** `.github/workflows/build-test.yml`
+- **Tags `v*`:** `.github/workflows/release.yml` (macOS arm64 + x86_64, Linux, Windows)
+
+Releases publish as **pre-releases** until marked stable.
+
+See [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) and [CROSS_PLATFORM_CODE_REVIEW.md](CROSS_PLATFORM_CODE_REVIEW.md).
 
 ---
 

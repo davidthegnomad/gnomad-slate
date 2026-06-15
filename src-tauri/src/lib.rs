@@ -13,7 +13,7 @@ use serde::Serialize;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use arboard::Clipboard;
-use tauri::{AppHandle, Manager, RunEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
 
 use crate::clipboard::{ClipboardEntry, ClipboardHistory};
@@ -102,8 +102,33 @@ fn read_note(filename: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn write_note(title: String, content: String, is_ephemeral: bool) -> Result<Note, String> {
-    filesystem::write_note(&title, &content, is_ephemeral)
+fn get_summon_shortcut_label() -> String {
+    "Alt+Space".to_string()
+}
+
+#[tauri::command]
+fn copy_text_to_clipboard(text: String) -> Result<(), String> {
+    let mut clipboard = Clipboard::new()
+        .map_err(|e| format!("Clipboard unavailable: {}", e))?;
+    clipboard
+        .set_text(text)
+        .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn write_note(
+    title: String,
+    content: String,
+    is_ephemeral: bool,
+    previous_filename: Option<String>,
+) -> Result<Note, String> {
+    filesystem::write_note(
+        &title,
+        &content,
+        is_ephemeral,
+        previous_filename.as_deref(),
+    )
 }
 
 #[tauri::command]
@@ -306,6 +331,10 @@ fn attach_hide_on_blur(window: &tauri::WebviewWindow) {
 
     window_for_events.clone().on_window_event(move |event| {
         match event {
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                api.prevent_close();
+                let _ = window_for_events.emit("window-close-requested", ());
+            }
             tauri::WindowEvent::Focused(false) => {
                 let generation = hide_generation.fetch_add(1, Ordering::SeqCst) + 1;
                 let w = window_for_events.clone();
@@ -372,6 +401,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_app_version_info,
+            get_summon_shortcut_label,
+            copy_text_to_clipboard,
             get_clipboard_history,
             get_clipboard_filter_enabled,
             set_clipboard_filter_enabled,
@@ -394,10 +425,8 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            match event {
-                RunEvent::Reopen { .. } => show_main_window(app_handle),
-                RunEvent::MainEventsCleared => maybe_show_on_app_activate(app_handle),
-                _ => {}
+            if let RunEvent::MainEventsCleared = event {
+                maybe_show_on_app_activate(app_handle);
             }
         });
 }

@@ -9,8 +9,10 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
+    "tauri:dev:x11": "GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri dev",
     "tauri:build": "tauri build",
     "build:extension": "node extension-gemini/build.mjs",
+    "tauri:build:ci": "tauri build",
     "docs:export": "node scripts/export-docs.mjs",
     "test": "vitest run",
     "test:watch": "vitest"

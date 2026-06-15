@@ -1,0 +1,129 @@
+# Gnomad Slate — Cross-Platform Code Review
+
+**Project:** `05_apps_and_extensions/gnomad-slate`  
+**Scope:** macOS, Windows, Linux (Tauri 2 desktop-only)  
+**Date:** 2026-06-15  
+**Reviewers:** Codebase audit + Nemotron 3 Ultra (OpenRouter) synthesis  
+
+> **Update 2026-06-15:** P0 + most P1 fixes implemented in source. Signing/notarization remain optional infra.
+
+**Raw Nemotron artifact:** `scripts/context-stack/offload-artifacts/gnomad-slate-cross-platform-review.json`
+
+---
+
+## Executive summary
+
+- **Global shortcut was macOS-only:** `Option+Space` hardcoded; Windows/Linux checklist promised `Alt+Space` but code did not implement it.
+- **Keyboard UX assumed macOS:** Palette and sidebar used `⌘` / `Cmd` labels everywhere — wrong on Windows/Linux.
+- **Note rename data bug:** Changing a note title created a **new file** without deleting the old one → duplicate notes and orphaned files.
+- **Save-on-close gap:** Debounced autosave did not flush on unmount/window close; no unsaved-changes prompt before quit.
+- **Platform behavior mismatch:** Hide-on-blur applied on all OSes; launcher-style dismiss is macOS-appropriate but breaks Windows/Linux focus workflows.
+- **No CI/release pipeline** despite cross-platform checklist and BUILD docs.
+
+---
+
+## Critical bugs (P0)
+
+| # | File | Problem | Fix | Effort |
+|---|------|---------|-----|--------|
+| 1 | `src-tauri/src/lib.rs` | Summon shortcut `Option+Space` only | `Option+Space` on macOS, `Alt+Space` elsewhere; expose label to UI | **S** |
+| 2 | `src-tauri/src/filesystem.rs` | `write_note` always creates new filename on title change | Accept `previous_filename`; delete old file after successful write | **S** |
+| 3 | `src/App.tsx` | Debounced save not flushed on close/unmount | Flush pending save; compare snapshot for dirty state | **M** |
+| 4 | `src/App.tsx`, `lib.rs` | No close guard | `CloseRequested` → emit event → `UnsavedChangesModal` | **M** |
+| 5 | `src/App.tsx` | Shortcuts hardcoded to macOS glyphs | `modKeyLabel.ts` + dynamic palette/sidebar labels | **S** |
+| 6 | `src-tauri/capabilities/default.json` | Missing `global-shortcut` permission | Add `global-shortcut:default` | **S** |
+
+---
+
+## macOS improvements
+
+| # | File | Problem | Fix | Effort |
+|---|------|---------|-----|--------|
+| 1 | `lib.rs` | No native File/Edit menu | File (New/Save/Quit), Edit, View (Palette) with `CmdOrCtrl` accelerators | **M** |
+| 2 | `lib.rs` | Hide-on-blur | Keep on macOS only (`cfg(target_os = "macos")`) | **S** |
+| 3 | `pasteboard_macos.rs` | Already optimizes clipboard polling | No change — document in checklist | — |
+| 4 | `tauri.conf.json` | No minimum macOS version | `minimumSystemVersion: "10.15"` | **S** |
+
+---
+
+## Windows improvements
+
+| # | File | Problem | Fix | Effort |
+|---|------|---------|-----|--------|
+| 1 | `lib.rs` | Alt+Space not registered | Platform-specific shortcut string | **S** |
+| 2 | `lib.rs` | Hide on blur | Disabled on non-macOS | **S** |
+| 3 | `App.tsx` | `navigator.clipboard` for HTML copy | Rust `copy_text_to_clipboard` via arboard | **S** |
+| 4 | `tauri.conf.json` | WebView2 bootstrap | `downloadBootstrapper` configured | **S** |
+
+---
+
+## Linux improvements
+
+| # | File | Problem | Fix | Effort |
+|---|------|---------|-----|--------|
+| 1 | `package.json` | No Wayland/X11 split | `tauri:dev` default + `tauri:dev:x11` fallback | **S** |
+| 2 | `scripts/install-linux-deps.sh` | Missing | dnf + apt installer script | **S** |
+| 3 | `clipboard.rs` | No changeCount (expected) | arboard polling 1s/3s — documented | — |
+
+---
+
+## Security cross-platform notes
+
+| # | File | Problem | Fix | Effort |
+|---|------|---------|-----|--------|
+| 1 | `App.tsx` | Revealed secrets in React state indefinitely | Auto-clear after 30s; clear on tab switch / lock | **S** |
+| 2 | `App.tsx` | Copy HTML via web clipboard API | Route through Rust clipboard command | **S** |
+| 3 | `filesystem.rs` | Path traversal | Already validates filenames — good | — |
+| 4 | Vault crypto | Rust-only session | Architecture sound — keep secrets out of IPC when possible | **M** (future) |
+
+---
+
+## CI / release gaps
+
+| # | Problem | Fix | Effort |
+|---|---------|-----|--------|
+| 1 | No GitHub Actions | Added `build-test.yml` + `release.yml` | **M** |
+| 2 | macOS arm64-only CI | Matrix includes x86_64 + aarch64 | **M** |
+| 3 | No signing secrets wired | `.env.example` template (optional) | **S** |
+
+---
+
+## Prioritized roadmap
+
+### P0 — Implemented
+1. Platform summon shortcut (Option vs Alt+Space)
+2. Note rename without duplicates
+3. Flush debounced save + close guard
+4. Dynamic ⌘/Ctrl labels
+5. Global shortcut capability + native menu
+6. macOS-only hide-on-blur
+
+### P1 — Partial / next
+7. Split `App.tsx` monolith into hooks/components
+8. Windows/Linux biometrics / Touch ID parity (future)
+9. Code signing + notarization in CI
+10. Palette commands that are still mock (Gist export)
+
+### P2 — Quality of life
+11. Dirty indicator in window title
+12. Flatpak manifest
+13. Automated release notes script
+
+---
+
+## What already works well
+
+- Vault-X crypto in Rust with rate-limited unlock
+- Clipboard sensitivity filter + macOS pasteboard changeCount optimization
+- Legacy data dir migration to `dirs::data_dir()/gnomad-slate`
+- Filename validation / path traversal protection
+- System theme preference with `prefers-color-scheme` listener
+- Markdown preview sanitization (script strip)
+
+---
+
+## Related docs
+
+- [CROSS_PLATFORM_CHECKLIST.md](./CROSS_PLATFORM_CHECKLIST.md)
+- [BUILD_PLATFORMS.md](./BUILD_PLATFORMS.md)
+- [QA_CHECKLIST.md](./QA_CHECKLIST.md)
