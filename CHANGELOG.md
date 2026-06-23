@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ---
 
+## [2.1.0-beta.4] — June 2026
+
+### Fixed
+
+- **Linux menu launch crash** — set `GDK_BACKEND=x11` and `WEBKIT_DISABLE_DMABUF_RENDERER=1` at startup when unset, fixing WebKitGTK `Gdk Error 71` on Wayland sessions (app menu / `.desktop` launches)
+
+---
+
 ## [2.1.0-beta.3] — June 2026
 
 ### Added — Linux desktop (alpha)

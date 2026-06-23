@@ -53,6 +53,7 @@ Settings (theme, clipboard filter, line numbers) persist via Tauri plugin-store 
 
 ## Wayland notes
 
+- **App menu launch:** the binary sets `GDK_BACKEND=x11` and `WEBKIT_DISABLE_DMABUF_RENDERER=1` at startup when those vars are unset (fixes WebKitGTK `Gdk Error 71` on Wayland sessions).
 - Global shortcuts depend on the compositor; `Super+Shift+Space` avoids conflicts with KDE/GNOME launchers.
 - Use the **tray icon** if the shortcut fails to register.
 - In-app dialogs replace `alert()` so WebKitGTK focus is not stolen.

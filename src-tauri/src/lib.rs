@@ -4,6 +4,8 @@ pub mod clipboard_filter;
 pub mod crypto;
 pub mod filesystem;
 #[cfg(target_os = "linux")]
+pub mod linux_display;
+#[cfg(target_os = "linux")]
 pub mod linux_tray;
 pub mod logging;
 pub mod macos_app;
