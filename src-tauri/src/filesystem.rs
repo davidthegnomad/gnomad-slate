@@ -23,11 +23,23 @@ fn get_legacy_slate_dir() -> Option<PathBuf> {
     })
 }
 
-/// Portable app data directory: `~/Library/Application Support/gnomad-slate` (macOS) or equivalent.
+/// Portable app data directory: XDG `~/.local/share/gnomad-slate` on Linux.
+fn platform_data_root() -> PathBuf {
+    #[cfg(target_os = "linux")]
+    {
+        dirs::data_local_dir()
+            .or_else(dirs::data_dir)
+            .unwrap_or_else(|| PathBuf::from("."))
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        dirs::data_dir().unwrap_or_else(|| PathBuf::from("."))
+    }
+}
+
+/// Portable app data directory: `~/Library/Application Support/gnomad-slate` (macOS) or XDG equivalent.
 pub fn get_slate_dir() -> PathBuf {
-    let modern = dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("gnomad-slate");
+    let modern = platform_data_root().join("gnomad-slate");
 
     if modern.exists() {
         return modern;
@@ -36,7 +48,7 @@ pub fn get_slate_dir() -> PathBuf {
     if let Some(legacy) = get_legacy_slate_dir() {
         if legacy.exists() {
             if let Err(e) = migrate_legacy_dir(&legacy, &modern) {
-                eprintln!("Gnomad Slate: legacy data migration failed: {e}");
+                tracing::warn!("legacy data migration failed: {e}");
                 return legacy;
             }
             return modern;
@@ -44,7 +56,7 @@ pub fn get_slate_dir() -> PathBuf {
     }
 
     if let Err(e) = fs::create_dir_all(&modern) {
-        eprintln!("Gnomad Slate: failed to create data directory: {e}");
+        tracing::warn!("failed to create data directory: {e}");
     }
     modern
 }
@@ -287,6 +299,21 @@ mod tests {
     fn accepts_valid_note_filenames() {
         assert!(validate_note_filename("temp_scratch.md").is_ok());
         assert!(validate_note_filename("vault_my-note.md").is_ok());
+    }
+
+    #[test]
+    fn slate_dir_uses_xdg_data_home_on_linux() {
+        #[cfg(target_os = "linux")]
+        {
+            let slate = super::get_slate_dir();
+            if let Some(home) = dirs::home_dir() {
+                assert!(
+                    slate.starts_with(home.join(".local").join("share")),
+                    "expected XDG data dir, got {}",
+                    slate.display()
+                );
+            }
+        }
     }
 
     #[test]

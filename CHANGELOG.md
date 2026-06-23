@@ -4,6 +4,29 @@ All notable changes to this project are documented here.
 
 ---
 
+## [2.1.0-beta.3] — June 2026
+
+### Added — Linux desktop (alpha)
+
+- Platform-split menus (`menu/linux.rs`, `menu/macos.rs`), system tray, `Super+Shift+Space` summon shortcut
+- Linux UI: filename on own row, line numbers toggle, in-app dialogs (no `alert()`), detailed Help (F1) with support contact
+- Packaging: `gnomad-slate` binary, Fedora/Nobara RPM and DEB with `.desktop` entry, libsoup3 deps
+- Settings persistence via `tauri-plugin-store`; strict CSP; structured `tracing` logs
+- **File → Close** (`Ctrl+W`) and **File → Quit** (`Ctrl+Q`) with vault-aware `confirm_quit` lifecycle
+
+### Fixed
+
+- Unified quit flow (`confirm_quit`) — no zombie process when global shortcut plugin keeps event loop alive
+- Linux close path uses runtime `isLinuxDesktop()` so quit works even if `plugin-os` loads after mount
+- Version display on Linux matches `package.json` / `Cargo.toml` semver
+
+### Release
+
+- GitHub Release `v2.1.0-beta.3` with Linux `.rpm` and `.deb` (Nobara/Fedora); macOS/Windows matrix builds
+- Session log: [docs/LINUX_SESSION_2026-06-23.md](docs/LINUX_SESSION_2026-06-23.md)
+
+---
+
 ## [2.1.0-beta.1] — June 2026
 
 ### Added

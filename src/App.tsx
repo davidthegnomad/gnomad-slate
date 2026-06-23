@@ -1,10 +1,16 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ButtonHTMLAttributes } from "react";
-import { invoke, listen, getPlatformWindow, LogicalSize } from "./utils/ipc";
+import { invoke, listen, getPlatformWindow, quitDesktopApp, isTauri } from "./utils/ipc";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AboutDialog } from "./components/AboutDialog";
+import { AppMessageDialog } from "./components/AppMessageDialog";
+import { HelpDialog } from "./components/HelpDialog";
 import UnsavedChangesModal from "./components/UnsavedChangesModal";
+import { useLinuxMenuBridge } from "./hooks/useLinuxMenuBridge";
 import { renderMarkdownToHtml } from "./utils/markdown";
-import { modKeyLabel, modShortcut } from "./utils/modKeyLabel";
+import { modKeyLabel, modShortcut, isMacOS } from "./utils/modKeyLabel";
+import { isLinuxDesktop } from "./utils/platform";
 import { resolveTheme, type ThemePreference } from "./utils/theme";
+import { readSetting, writeSetting } from "./utils/settings";
 import "./App.css";
 
 interface Note {
@@ -33,6 +39,7 @@ interface AppVersionInfo {
 }
 
 const NOTE_SAVE_DEBOUNCE_MS = 400;
+const SEARCH_DEBOUNCE_MS = 250;
 
 function TipButton({
   tip,
@@ -66,6 +73,7 @@ function App() {
   const [editorContent, setEditorContent] = useState("");
   const [isEphemeral, setIsEphemeral] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "scratch" | "vault" | "secrets">("scratch");
   const [editorView, setEditorView] = useState<"edit" | "preview" | "split">("edit");
 
@@ -94,10 +102,17 @@ function App() {
   const [newSecretValue, setNewSecretValue] = useState("");
 
   const [showAbout, setShowAbout] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [appMessage, setAppMessage] = useState<string | null>(null);
+  const [summonShortcutLabel, setSummonShortcutLabel] = useState("Alt+Space");
   const [aboutAutoCheck, setAboutAutoCheck] = useState(false);
   const [appVersionLabel, setAppVersionLabel] = useState("v2.1 beta");
+  const [isLinux, setIsLinux] = useState(false);
+  const [showLineNumbers, setShowLineNumbers] = useState(false);
   const [closePromptOpen, setClosePromptOpen] = useState(false);
   const pendingWindowClose = useRef(false);
+  const quittingRef = useRef(false);
+  const settingsReady = useRef(false);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -126,13 +141,9 @@ function App() {
   }, [activeTab]);
 
   // --- Theme State ---
-  const [theme, setTheme] = useState<ThemePreference>(() => {
-    return (localStorage.getItem("gnomad-theme") as ThemePreference) || "dark";
-  });
+  const [theme, setTheme] = useState<ThemePreference>("dark");
 
-  const [clipboardFilterEnabled, setClipboardFilterEnabled] = useState(() => {
-    return localStorage.getItem("gnomad-clipboard-filter") !== "false";
-  });
+  const [clipboardFilterEnabled, setClipboardFilterEnabled] = useState(true);
 
   const previewHtml = useMemo(
     () => renderMarkdownToHtml(editorContent),
@@ -140,7 +151,32 @@ function App() {
   );
 
   useEffect(() => {
-    localStorage.setItem("gnomad-theme", theme);
+    void (async () => {
+      const storedTheme = await readSetting("gnomad-theme");
+      if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "system") {
+        setTheme(storedTheme);
+      }
+      const clipFilter = await readSetting("gnomad-clipboard-filter");
+      const clipEnabled = clipFilter !== "false";
+      setClipboardFilterEnabled(clipEnabled);
+      const lineNumbers = await readSetting("gnomad-line-numbers");
+      if (lineNumbers === "true") {
+        setShowLineNumbers(true);
+      }
+      settingsReady.current = true;
+      void invoke("set_clipboard_filter_enabled", { enabled: clipEnabled });
+    })();
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (settingsReady.current) {
+      void writeSetting("gnomad-theme", theme);
+    }
 
     const applyTheme = () => {
       const active = resolveTheme(
@@ -153,7 +189,9 @@ function App() {
         document.documentElement.removeAttribute("data-theme");
       }
       const win = getPlatformWindow();
-      void win.setTheme(active);
+      if (isMacOS()) {
+        void win.setTheme(active);
+      }
       void win.setBackgroundColor(active === "light" ? "#f3f4f6" : "#0d0d10");
     };
 
@@ -168,49 +206,48 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem("gnomad-clipboard-filter", String(clipboardFilterEnabled));
+    if (!settingsReady.current) {
+      return;
+    }
+    void writeSetting("gnomad-clipboard-filter", String(clipboardFilterEnabled));
     void invoke("set_clipboard_filter_enabled", { enabled: clipboardFilterEnabled });
   }, [clipboardFilterEnabled]);
 
+  const showAppMessage = useCallback(
+    (message: string) => {
+      if (isLinux) {
+        setAppMessage(message);
+      } else {
+        alert(message);
+      }
+    },
+    [isLinux]
+  );
+
   useEffect(() => {
-    void invoke<boolean>("get_clipboard_filter_enabled")
-      .then((enabled) => setClipboardFilterEnabled(enabled))
-      .catch(() => undefined);
+    setIsLinux(isLinuxDesktop());
   }, []);
+
+  useEffect(() => {
+    if (isLinux) {
+      document.documentElement.setAttribute("data-platform", "linux");
+    }
+  }, [isLinux]);
+
+  useEffect(() => {
+    if (!isLinux || !settingsReady.current) {
+      return;
+    }
+    void writeSetting("gnomad-line-numbers", String(showLineNumbers));
+  }, [isLinux, showLineNumbers]);
 
   useEffect(() => {
     void invoke<AppVersionInfo>("get_app_version_info")
       .then((info) => setAppVersionLabel(info.display_version))
       .catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
-    const unsubs: Array<Promise<() => void>> = [
-      listen("menu-about", () => {
-        setAboutAutoCheck(false);
-        setShowAbout(true);
-      }),
-      listen("menu-check-updates", () => {
-        setAboutAutoCheck(true);
-        setShowAbout(true);
-      }),
-    ];
-
-    return () => {
-      void Promise.all(unsubs).then((handlers) => {
-        handlers.forEach((unlisten) => unlisten());
-      });
-    };
-  }, []);
-
-  useEffect(() => {
-    void (async () => {
-      const win = getPlatformWindow();
-      const size = await win.innerSize();
-      if (size.width < 960) {
-        await win.setSize(new LogicalSize(1120, 640));
-      }
-    })();
+    void invoke<string>("get_summon_shortcut_label")
+      .then((label) => setSummonShortcutLabel(label))
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -222,18 +259,21 @@ function App() {
   }, []);
 
   // --- Palette Commands ---
-  const paletteCommands = [
-    { name: "Format JSON", desc: "Prettifies and validates raw JSON in the editor", shortcut: `${modKeyLabel()}+F` },
-    { name: "Prettify Markdown", desc: "Cleans list structure and header spacing", shortcut: `${modKeyLabel()}+L` },
-    { name: "Copy as Raw HTML", desc: "Compiles Markdown to sanitized HTML and copies", shortcut: `${modKeyLabel()}+Shift+H` },
-    { name: "Create Daily Note", desc: "Creates or appends to daily journal note", shortcut: "⌘D" },
-    { name: "Append to Daily Note", desc: "Appends selected text directly to today's log", shortcut: "⌘⌥D" },
-    { name: "Export selection to GitHub Gist", desc: "Publishes selected text as an online gist", shortcut: "⌘G" },
-    { name: "Lock / Unlock Secret Vault", desc: "Toggles Vault-X secure credentials lock", shortcut: "⌘⌥L" },
-    { name: "Switch to Light Theme", desc: "Sets theme to a crisp white minimalist style", shortcut: "" },
-    { name: "Switch to Dark Theme", desc: "Sets theme to deep obsidian neon style", shortcut: "" },
-    { name: "Switch to System Theme", desc: "Matches system preferences dynamically", shortcut: "" },
-  ];
+  const paletteCommands = useMemo(
+    () => [
+      { name: "Format JSON", desc: "Prettifies and validates raw JSON in the editor", shortcut: `${modKeyLabel()}+F` },
+      { name: "Prettify Markdown", desc: "Cleans list structure and header spacing", shortcut: `${modKeyLabel()}+L` },
+      { name: "Copy as Raw HTML", desc: "Compiles Markdown to sanitized HTML and copies", shortcut: modShortcut("H", { shift: true }) },
+      { name: "Create Daily Note", desc: "Creates or appends to daily journal note", shortcut: modShortcut("D") },
+      { name: "Append to Daily Note", desc: "Appends selected text directly to today's log", shortcut: modShortcut("D", { alt: true }) },
+      { name: "Export selection to GitHub Gist", desc: "Publishes selected text as an online gist", shortcut: modShortcut("G") },
+      { name: "Lock / Unlock Secret Vault", desc: "Toggles Vault-X secure credentials lock", shortcut: modShortcut("L", { alt: true }) },
+      { name: "Switch to Light Theme", desc: "Sets theme to a crisp white minimalist style", shortcut: "" },
+      { name: "Switch to Dark Theme", desc: "Sets theme to deep obsidian neon style", shortcut: "" },
+      { name: "Switch to System Theme", desc: "Matches system preferences dynamically", shortcut: "" },
+    ],
+    []
+  );
 
   // --- Load Initial Notes & Check Vault ---
   useEffect(() => {
@@ -396,6 +436,51 @@ function App() {
     }
   }, [saveNoteNow]);
 
+  const createNewSavedNote = useCallback(async () => {
+    await saveNoteNow();
+
+    const title = `Note_${new Date().toISOString().slice(0, 10)}`;
+    setEditorTitle(title);
+    setEditorContent("");
+    setIsEphemeral(false);
+    setActiveTab("vault");
+    editorTitleRef.current = title;
+    editorContentRef.current = "";
+    isEphemeralRef.current = false;
+    activeTabRef.current = "vault";
+
+    try {
+      const saved = await invoke<Note>("write_note", {
+        title,
+        content: "",
+        isEphemeral: false,
+        previousFilename: null,
+      });
+      setNotes((prev) => {
+        const filtered = prev.filter((n) => n.filename !== saved.filename);
+        return [saved, ...filtered];
+      });
+      setSelectedNote(saved);
+    } catch (e) {
+      console.error("Failed to create saved note:", e);
+    }
+  }, [saveNoteNow]);
+
+  const deleteCurrentNote = useCallback(async () => {
+    if (!selectedNote) {
+      return;
+    }
+    try {
+      await invoke("delete_note", { filename: selectedNote.filename });
+      setNotes((prev) => prev.filter((n) => n.filename !== selectedNote.filename));
+      setSelectedNote(null);
+      setEditorTitle("");
+      setEditorContent("");
+    } catch (e) {
+      console.error(e);
+    }
+  }, [selectedNote]);
+
   const handleEditorShortcut = useCallback(
     (e: React.KeyboardEvent) => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
@@ -419,36 +504,27 @@ function App() {
 
   const saveActiveNote = useCallback(
     async (overrideContent?: string, overrideTitle?: string, forceVault?: boolean) => {
-      const titleToSave = overrideTitle !== undefined ? overrideTitle : editorTitle;
-      const contentToSave = overrideContent !== undefined ? overrideContent : editorContent;
-      const ephemeralState = forceVault !== undefined ? !forceVault : isEphemeral;
-
-      if (!titleToSave.trim()) return;
-
-      try {
-        const previousFilename = selectedNote?.filename ?? null;
-        const saved = await invoke<Note>("write_note", {
-          title: titleToSave,
-          content: contentToSave,
-          isEphemeral: ephemeralState,
-          previousFilename,
-        });
-
-        setNotes((prev) => {
-          const filtered = prev.filter((n) => n.filename !== saved.filename);
-          if (previousFilename && previousFilename !== saved.filename) {
-            return [saved, ...filtered.filter((n) => n.filename !== previousFilename)];
-          }
-          return [saved, ...filtered];
-        });
-
-        setSelectedNote(saved);
-        setIsEphemeral(saved.is_ephemeral);
-      } catch (e) {
-        console.error("Autosave failed:", e);
+      if (overrideContent !== undefined) {
+        editorContentRef.current = overrideContent;
+        setEditorContent(overrideContent);
       }
+      if (overrideTitle !== undefined) {
+        editorTitleRef.current = overrideTitle;
+        setEditorTitle(overrideTitle);
+      }
+      if (forceVault !== undefined) {
+        isEphemeralRef.current = !forceVault;
+        setIsEphemeral(!forceVault);
+      }
+
+      const title = editorTitleRef.current.trim();
+      if (!title) {
+        return;
+      }
+
+      await saveNoteNow({ promoteToSaved: forceVault === true });
     },
-    [editorTitle, editorContent, isEphemeral, selectedNote]
+    [saveNoteNow]
   );
 
   const flushPendingSave = useCallback(async () => {
@@ -458,6 +534,30 @@ function App() {
       await saveActiveNote();
     }
   }, [saveActiveNote]);
+
+  const closeApp = useCallback(async () => {
+    if (quittingRef.current) {
+      return;
+    }
+    if (saveDebounceRef.current) {
+      await flushPendingSave();
+    } else {
+      await saveNoteNow();
+    }
+    const onLinux = isLinuxDesktop();
+    if (onLinux) {
+      quittingRef.current = true;
+      try {
+        await quitDesktopApp();
+      } catch (error) {
+        quittingRef.current = false;
+        console.error("Quit failed:", error);
+      }
+      return;
+    }
+    const win = getPlatformWindow();
+    await win.destroy();
+  }, [flushPendingSave, saveNoteNow]);
 
   const scheduleSaveNote = useCallback(
     (overrideContent?: string, overrideTitle?: string, forceVault?: boolean) => {
@@ -496,6 +596,11 @@ function App() {
     }
   };
 
+  const lineNumberRows = useMemo(() => {
+    const lineCount = Math.max(1, editorContent.split("\n").length);
+    return Array.from({ length: lineCount }, (_, index) => index + 1);
+  }, [editorContent]);
+
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     void listen("window-close-requested", () => {
@@ -506,8 +611,7 @@ function App() {
       }
       void (async () => {
         await saveNoteNow();
-        const win = await getPlatformWindow();
-        await win.destroy();
+        await closeApp();
       })();
     }).then((fn) => {
       unlisten = fn;
@@ -515,7 +619,51 @@ function App() {
     return () => {
       unlisten?.();
     };
-  }, [saveNoteNow]);
+  }, [saveNoteNow, closeApp]);
+
+  useEffect(() => {
+    if (!isLinuxDesktop() || !isTauri()) {
+      return;
+    }
+    let unlisten: (() => void) | undefined;
+    void getCurrentWindow()
+      .onCloseRequested(async (event) => {
+        event.preventDefault();
+        if (saveDebounceRef.current) {
+          pendingWindowClose.current = true;
+          setClosePromptOpen(true);
+          return;
+        }
+        await saveNoteNow();
+        await closeApp();
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+    return () => {
+      unlisten?.();
+    };
+  }, [saveNoteNow, closeApp]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen("app-quit-requested", () => {
+      if (quittingRef.current) {
+        return;
+      }
+      if (saveDebounceRef.current) {
+        pendingWindowClose.current = true;
+        setClosePromptOpen(true);
+        return;
+      }
+      void closeApp();
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [closeApp]);
 
   // --- Keydown Event Handling for Universal Hotkeys ---
   useEffect(() => {
@@ -527,6 +675,13 @@ function App() {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+
+      // F1: Help (Linux)
+      if (isLinux && e.key === "F1") {
+        e.preventDefault();
+        setShowHelp(true);
+        return;
+      }
 
       // Esc: Dismiss overlays
       if (e.key === "Escape") {
@@ -580,7 +735,7 @@ function App() {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [saveNoteNow, createNewDraft]);
+  }, [saveNoteNow, createNewDraft, isLinux]);
 
   // --- Clipboard History Fetch ---
   const loadClipboardHistory = async () => {
@@ -626,6 +781,26 @@ function App() {
     setShowClipboard(false);
   };
 
+  useLinuxMenuBridge({
+    createNewDraft,
+    createNewSavedNote,
+    saveNoteNow,
+    deleteCurrentNote,
+    loadNotes,
+    loadClipboardHistory,
+    setEditorView,
+    setShowPalette,
+    setPaletteQuery,
+    setSelectedPaletteIdx,
+    setShowClipboard,
+    setSelectedClipIdx,
+    setShowLineNumbers,
+    setTheme,
+    setShowHelp,
+    setAboutAutoCheck,
+    setShowAbout,
+  });
+
   // --- Command Palette Action Executions ---
   const executeCommand = async (commandName: string) => {
     setShowPalette(false);
@@ -647,7 +822,7 @@ function App() {
           setEditorContent(formatted);
           saveActiveNote(formatted);
         } catch (err) {
-          alert("Error: Active note content does not contain valid JSON.");
+          showAppMessage("Error: Active note content does not contain valid JSON.");
         }
         break;
 
@@ -671,9 +846,9 @@ function App() {
         const html = renderMarkdownToHtml(editorContent);
         try {
           await invoke("copy_text_to_clipboard", { text: html });
-          alert("Markdown compiled to HTML and copied to clipboard.");
+          showAppMessage("Markdown compiled to HTML and copied to clipboard.");
         } catch {
-          alert("Could not copy HTML to clipboard.");
+          showAppMessage("Could not copy HTML to clipboard.");
         }
         break;
       }
@@ -694,7 +869,7 @@ function App() {
             previousFilename: null,
           });
           loadNotes();
-          alert(`Appended to ${title}!`);
+          showAppMessage(`Appended to ${title}!`);
         } catch (e) {
           console.error(e);
         }
@@ -702,7 +877,7 @@ function App() {
       }
 
       case "Export selection to GitHub Gist":
-        alert("Mock action: selection uploaded securely to your GitHub private Gists!");
+        showAppMessage("Mock action: selection uploaded securely to your GitHub private Gists!");
         break;
 
       case "Lock / Unlock Secret Vault":
@@ -722,7 +897,7 @@ function App() {
       clearRevealedSecret();
       await loadSecretMetadata();
     } catch (e: unknown) {
-      alert("Failed to initialize: " + invokeErrorMessage(e));
+      showAppMessage("Failed to initialize: " + invokeErrorMessage(e));
     }
   };
 
@@ -735,7 +910,7 @@ function App() {
       clearRevealedSecret();
       await loadSecretMetadata();
     } catch (e: unknown) {
-      alert(invokeErrorMessage(e));
+      showAppMessage(invokeErrorMessage(e));
     }
   };
 
@@ -762,7 +937,7 @@ function App() {
       clearRevealedSecret();
       await loadSecretMetadata();
     } catch (e: unknown) {
-      alert("Failed to add secret: " + invokeErrorMessage(e));
+      showAppMessage("Failed to add secret: " + invokeErrorMessage(e));
     }
   };
 
@@ -772,16 +947,16 @@ function App() {
       clearRevealedSecret();
       await loadSecretMetadata();
     } catch (e: unknown) {
-      alert("Failed to delete secret: " + invokeErrorMessage(e));
+      showAppMessage("Failed to delete secret: " + invokeErrorMessage(e));
     }
   };
 
   const handleCopySecret = async (index: number, name: string) => {
     try {
       await invoke("copy_secret_to_clipboard", { index });
-      alert(`${name} copied to clipboard!`);
+      showAppMessage(`${name} copied to clipboard!`);
     } catch (e: unknown) {
-      alert("Copy failed: " + invokeErrorMessage(e));
+      showAppMessage("Copy failed: " + invokeErrorMessage(e));
     }
   };
 
@@ -795,15 +970,15 @@ function App() {
       setRevealedIndex(index);
       setRevealedValue(value);
     } catch (e: unknown) {
-      alert("Could not reveal secret: " + invokeErrorMessage(e));
+      showAppMessage("Could not reveal secret: " + invokeErrorMessage(e));
     }
   };
 
   // --- Render Notes Filter list ---
   const filteredNotes = notes.filter((note) => {
     // Search filter
-    const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = note.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      note.content.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
     
     // Tab filter
     if (activeTab === "scratch") return matchesSearch && note.is_ephemeral;
@@ -828,7 +1003,7 @@ function App() {
           <input
             type="text"
             className="search-input"
-            placeholder="Search notes... (⌘P)"
+            placeholder={`Search notes... (${modShortcut("P")})`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -899,7 +1074,7 @@ function App() {
             <span>{modShortcut("V", { shift: true })}</span> <span>Clipboard</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "10px" }}>
-            <span>Alt+Space</span> <span>Summon</span>
+            <span>{summonShortcutLabel}</span> <span>Summon</span>
           </div>
 
           <label className="settings-toggle-row has-tooltip" data-tooltip="Hide likely passwords and API keys from clipboard history">
@@ -1101,93 +1276,209 @@ function App() {
           </div>
         ) : (
           <div className="editor-container">
-            <div className="editor-header">
-              <div className="editor-title-container">
-                <span style={{ fontSize: "14px", color: isEphemeral ? "var(--accent-cyan)" : "var(--accent-color)" }}>●</span>
-                <input
-                  type="text"
-                  className="editor-title-input"
-                  placeholder="Untitled note"
-                  value={editorTitle}
-                  onKeyDown={handleEditorShortcut}
-                  onChange={(e) => {
-                    setEditorTitle(e.target.value);
-                    scheduleSaveNote(editorContent, e.target.value);
-                  }}
-                />
-              </div>
+            <div className={`editor-header${isLinux ? " editor-header-linux" : ""}`}>
+              {isLinux ? (
+                <>
+                  <div className="toolbar-actions toolbar-actions-linux">
+                    {saveFeedback && (
+                      <span className="save-feedback" aria-live="polite">
+                        {saveFeedback}
+                      </span>
+                    )}
+                    <div className="view-mode-row">
+                      <TipButton
+                        className={`tab-btn ${editorView === "edit" ? "active" : ""}`}
+                        tipBelow
+                        tip="Edit raw markdown in the text area"
+                        onClick={() => setEditorView("edit")}
+                      >
+                        Edit
+                      </TipButton>
+                      <TipButton
+                        className={`tab-btn ${editorView === "split" ? "active" : ""}`}
+                        tipBelow
+                        tip="See your markdown and preview side by side"
+                        onClick={() => setEditorView("split")}
+                      >
+                        Split
+                      </TipButton>
+                      <TipButton
+                        className={`tab-btn ${editorView === "preview" ? "active" : ""}`}
+                        tipBelow
+                        tip="View rendered markdown only"
+                        onClick={() => setEditorView("preview")}
+                      >
+                        Preview
+                      </TipButton>
+                    </div>
+                    <TipButton
+                      className={`action-btn ${showLineNumbers ? "active-glow" : ""}`}
+                      tipBelow
+                      tip="Show or hide line numbers in the editor"
+                      onClick={() => setShowLineNumbers((prev) => !prev)}
+                    >
+                      # Lines
+                    </TipButton>
+                    <TipButton
+                      className={`action-btn ${isEphemeral ? "active-glow" : ""}`}
+                      tipBelow
+                      tip={
+                        isEphemeral
+                          ? `Scratchpad draft — auto-archives after 48 hours. Click or press ${modShortcut("S")} to save permanently.`
+                          : "Saved permanently. Click to mark as a scratchpad draft again."
+                      }
+                      onClick={() => {
+                        const nextVal = !isEphemeral;
+                        setIsEphemeral(nextVal);
+                        saveActiveNote(editorContent, editorTitle, !nextVal);
+                      }}
+                    >
+                      {isEphemeral ? "✧ Scratchpad Draft" : "🔒 Saved Note"}
+                    </TipButton>
+                    <TipButton
+                      className="action-btn"
+                      tipBelow
+                      tip={`Start a fresh scratchpad note (${modShortcut("N")})`}
+                      onClick={() => void createNewDraft()}
+                    >
+                      New Draft
+                    </TipButton>
+                  </div>
+                  <div className="editor-meta-row">
+                    <div className="editor-title-container">
+                      <span style={{ fontSize: "14px", color: isEphemeral ? "var(--accent-cyan)" : "var(--accent-color)" }}>●</span>
+                      <input
+                        type="text"
+                        className="editor-title-input"
+                        placeholder="Untitled note"
+                        value={editorTitle}
+                        onKeyDown={handleEditorShortcut}
+                        onChange={(e) => {
+                          setEditorTitle(e.target.value);
+                          scheduleSaveNote(editorContent, e.target.value);
+                        }}
+                      />
+                    </div>
+                    <span className="editor-filename" title="Note file on disk">
+                      {selectedNote?.filename ?? "unsaved.md"}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="editor-title-container">
+                    <span style={{ fontSize: "14px", color: isEphemeral ? "var(--accent-cyan)" : "var(--accent-color)" }}>●</span>
+                    <input
+                      type="text"
+                      className="editor-title-input"
+                      placeholder="Untitled note"
+                      value={editorTitle}
+                      onKeyDown={handleEditorShortcut}
+                      onChange={(e) => {
+                        setEditorTitle(e.target.value);
+                        scheduleSaveNote(editorContent, e.target.value);
+                      }}
+                    />
+                  </div>
 
-              <div className="toolbar-actions">
-                {saveFeedback && (
-                  <span className="save-feedback" aria-live="polite">
-                    {saveFeedback}
-                  </span>
-                )}
-                <div className="view-mode-row">
-                  <TipButton
-                    className={`tab-btn ${editorView === "edit" ? "active" : ""}`}
-                    tip="Edit raw markdown in the text area"
-                    onClick={() => setEditorView("edit")}
-                  >
-                    Edit
-                  </TipButton>
-                  <TipButton
-                    className={`tab-btn ${editorView === "split" ? "active" : ""}`}
-                    tip="See your markdown and preview side by side"
-                    onClick={() => setEditorView("split")}
-                  >
-                    Split
-                  </TipButton>
-                  <TipButton
-                    className={`tab-btn ${editorView === "preview" ? "active" : ""}`}
-                    tip="View rendered markdown only"
-                    onClick={() => setEditorView("preview")}
-                  >
-                    Preview
-                  </TipButton>
-                </div>
-                <TipButton
-                  className={`action-btn ${isEphemeral ? "active-glow" : ""}`}
-                  tipBelow
-                  tip={
-                    isEphemeral
-                      ? "Scratchpad draft — auto-archives after 48 hours. Click or press ⌘S to save permanently."
-                      : "Saved permanently. Click to mark as a scratchpad draft again."
-                  }
-                  onClick={() => {
-                    const nextVal = !isEphemeral;
-                    setIsEphemeral(nextVal);
-                    saveActiveNote(editorContent, editorTitle, !nextVal);
-                  }}
-                >
-                  {isEphemeral ? "✧ Scratchpad Draft" : "🔒 Saved Note"}
-                </TipButton>
-                <TipButton
-                  className="action-btn"
-                  tipBelow
-                  tip="Start a fresh scratchpad note (⌘N)"
-                  onClick={() => void createNewDraft()}
-                >
-                  New Draft
-                </TipButton>
-              </div>
+                  <div className="toolbar-actions">
+                    {saveFeedback && (
+                      <span className="save-feedback" aria-live="polite">
+                        {saveFeedback}
+                      </span>
+                    )}
+                    <div className="view-mode-row">
+                      <TipButton
+                        className={`tab-btn ${editorView === "edit" ? "active" : ""}`}
+                        tip="Edit raw markdown in the text area"
+                        onClick={() => setEditorView("edit")}
+                      >
+                        Edit
+                      </TipButton>
+                      <TipButton
+                        className={`tab-btn ${editorView === "split" ? "active" : ""}`}
+                        tip="See your markdown and preview side by side"
+                        onClick={() => setEditorView("split")}
+                      >
+                        Split
+                      </TipButton>
+                      <TipButton
+                        className={`tab-btn ${editorView === "preview" ? "active" : ""}`}
+                        tip="View rendered markdown only"
+                        onClick={() => setEditorView("preview")}
+                      >
+                        Preview
+                      </TipButton>
+                    </div>
+                    <TipButton
+                      className={`action-btn ${isEphemeral ? "active-glow" : ""}`}
+                      tipBelow
+                      tip={
+                        isEphemeral
+                          ? `Scratchpad draft — auto-archives after 48 hours. Click or press ${modShortcut("S")} to save permanently.`
+                          : "Saved permanently. Click to mark as a scratchpad draft again."
+                      }
+                      onClick={() => {
+                        const nextVal = !isEphemeral;
+                        setIsEphemeral(nextVal);
+                        saveActiveNote(editorContent, editorTitle, !nextVal);
+                      }}
+                    >
+                      {isEphemeral ? "✧ Scratchpad Draft" : "🔒 Saved Note"}
+                    </TipButton>
+                    <TipButton
+                      className="action-btn"
+                      tipBelow
+                      tip={`Start a fresh scratchpad note (${modShortcut("N")})`}
+                      onClick={() => void createNewDraft()}
+                    >
+                      New Draft
+                    </TipButton>
+                  </div>
+                </>
+              )}
             </div>
 
             <div
               className={`editor-body ${editorView === "split" ? "editor-body-split" : ""}`}
             >
               {(editorView === "edit" || editorView === "split") && (
-                <textarea
-                  ref={editorRef}
-                  className="text-textarea"
-                  placeholder="Start typing in Markdown… ⌘S save · ⌘N new draft · ⌘P palette"
-                  value={editorContent}
-                  onKeyDown={handleEditorShortcut}
-                  onChange={(e) => {
-                    setEditorContent(e.target.value);
-                    scheduleSaveNote(e.target.value, editorTitle);
-                  }}
-                />
+                <div className={`editor-input-wrap${isLinux && showLineNumbers ? " editor-input-wrap-lined" : ""}`}>
+                  {isLinux && showLineNumbers && (
+                    <div className="line-numbers-gutter" aria-hidden="true">
+                      {lineNumberRows.map((line) => (
+                        <div key={line} className="line-number">
+                          {line}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <textarea
+                    ref={editorRef}
+                    className="text-textarea"
+                    placeholder={
+                      isLinux
+                        ? `Start typing in Markdown… ${modShortcut("S")} save · ${modShortcut("N")} new draft · ${modShortcut("P")} palette`
+                        : `Start typing in Markdown… ${modShortcut("S")} save · ${modShortcut("N")} new draft · ${modShortcut("P")} palette`
+                    }
+                    value={editorContent}
+                    onKeyDown={handleEditorShortcut}
+                    onChange={(e) => {
+                      setEditorContent(e.target.value);
+                      scheduleSaveNote(e.target.value, editorTitle);
+                    }}
+                    onScroll={
+                      isLinux && showLineNumbers
+                        ? (e) => {
+                            const gutter = e.currentTarget.previousElementSibling;
+                            if (gutter instanceof HTMLElement) {
+                              gutter.scrollTop = e.currentTarget.scrollTop;
+                            }
+                          }
+                        : undefined
+                    }
+                  />
+                </div>
               )}
               {(editorView === "preview" || editorView === "split") && (
                 <div
@@ -1270,6 +1561,14 @@ function App() {
           setAboutAutoCheck(false);
         }}
       />
+      {isLinux && (
+        <HelpDialog open={showHelp} onClose={() => setShowHelp(false)} />
+      )}
+      <AppMessageDialog
+        open={appMessage !== null}
+        message={appMessage ?? ""}
+        onClose={() => setAppMessage(null)}
+      />
       {closePromptOpen && (
         <UnsavedChangesModal
           noteTitle={editorTitle}
@@ -1277,15 +1576,13 @@ function App() {
             void (async () => {
               await flushPendingSave();
               setClosePromptOpen(false);
-              const win = await getPlatformWindow();
-              await win.destroy();
+              await closeApp();
             })();
           }}
           onDiscard={() => {
             void (async () => {
               setClosePromptOpen(false);
-              const win = await getPlatformWindow();
-              await win.destroy();
+              await closeApp();
             })();
           }}
           onCancel={() => {

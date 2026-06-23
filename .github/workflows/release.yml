@@ -41,7 +41,8 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libgtk-3-dev \
+            libappindicator3-dev librsvg2-dev patchelf
 
       - run: npm ci
 
@@ -49,9 +50,17 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Gnomad Slate ${{ github.ref_name }}
-          releaseBody: See CHANGELOG.md
+          releaseBody: |
+            ## Gnomad Slate ${{ github.ref_name }}
+
+            See [CHANGELOG.md](https://github.com/davidthegnomad/gnomad-slate/blob/main/CHANGELOG.md) and the [Linux session log](https://github.com/davidthegnomad/gnomad-slate/blob/main/docs/LINUX_SESSION_2026-06-23.md).
+
+            **Linux (alpha):** install the `.rpm` (Fedora/Nobara) or `.deb` (Debian/Ubuntu).
+            **macOS (beta):** use the `.app.tar.gz` or `.zip` for your architecture.
           releaseDraft: false
           prerelease: true

@@ -363,6 +363,12 @@ body {
   min-width: 0;
 }
 
+.editor-body-split .editor-input-wrap {
+  flex: 1;
+  width: 50%;
+  min-width: 0;
+}
+
 .editor-body-split .text-textarea {
   border-right: 1px solid var(--border-color);
 }
@@ -853,4 +859,88 @@ body {
 @keyframes slideDown {
   from { transform: translateY(-20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
+}
+
+/* --- Linux desktop layout --- */
+[data-platform="linux"] .editor-header-linux {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+[data-platform="linux"] .toolbar-actions-linux {
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+[data-platform="linux"] .editor-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+[data-platform="linux"] .editor-filename {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-left: 22px;
+  user-select: text;
+}
+
+.editor-input-wrap {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.line-numbers-gutter {
+  overflow: hidden;
+  flex: 0 0 auto;
+  padding: 24px 8px 24px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  text-align: right;
+  user-select: none;
+  border-right: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.line-number {
+  height: 1.6em;
+}
+
+.help-dialog {
+  width: min(560px, 92vw);
+  max-height: 85vh;
+}
+
+.help-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.help-intro {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.help-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.help-section-body {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  white-space: pre-line;
 }
