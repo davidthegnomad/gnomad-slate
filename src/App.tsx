@@ -519,6 +519,12 @@ function App() {
 
   // --- Keydown Event Handling for Universal Hotkeys ---
   useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
 
@@ -549,8 +555,12 @@ function App() {
         return;
       }
 
-      // ⌘P: Open Command Palette
-      if (isCmdOrCtrl && e.key.toLowerCase() === "p") {
+      // ⌘P: Open Command Palette (not while typing in a field — allow select-all etc.)
+      if (
+        isCmdOrCtrl &&
+        e.key.toLowerCase() === "p" &&
+        !isEditableTarget(e.target)
+      ) {
         e.preventDefault();
         setPaletteQuery("");
         setSelectedPaletteIdx(0);
@@ -568,8 +578,8 @@ function App() {
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown, true);
-    return () => document.removeEventListener("keydown", handleKeyDown, true);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [saveNoteNow, createNewDraft]);
 
   // --- Clipboard History Fetch ---

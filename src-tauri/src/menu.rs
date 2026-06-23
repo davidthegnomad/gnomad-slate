@@ -24,13 +24,40 @@ pub fn install_app_menu(app: &AppHandle) -> tauri::Result<()> {
                 &PredefinedMenuItem::quit(app, None)?,
             ],
         )?;
-        Menu::with_items(app, &[&app_submenu])?
+        let edit_submenu = Submenu::with_items(
+            app,
+            "Edit",
+            true,
+            &[
+                &PredefinedMenuItem::undo(app, None)?,
+                &PredefinedMenuItem::redo(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::cut(app, None)?,
+                &PredefinedMenuItem::copy(app, None)?,
+                &PredefinedMenuItem::paste(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::select_all(app, None)?,
+            ],
+        )?;
+        Menu::with_items(app, &[&app_submenu, &edit_submenu])?
     };
 
     #[cfg(not(target_os = "macos"))]
     let root = {
+        let edit_submenu = Submenu::with_items(
+            app,
+            "Edit",
+            true,
+            &[
+                &PredefinedMenuItem::cut(app, None)?,
+                &PredefinedMenuItem::copy(app, None)?,
+                &PredefinedMenuItem::paste(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::select_all(app, None)?,
+            ],
+        )?;
         let help_submenu = Submenu::with_items(app, "Help", true, &[&about, &check_updates])?;
-        Menu::with_items(app, &[&help_submenu])?
+        Menu::with_items(app, &[&edit_submenu, &help_submenu])?
     };
 
     app.set_menu(root)?;

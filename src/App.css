@@ -109,6 +109,8 @@ body {
   font-size: 12px;
   outline: none;
   transition: all 0.2s ease;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .search-input:focus {
@@ -288,6 +290,8 @@ body {
   max-width: 280px;
   min-width: 120px;
   font-family: var(--font-sans);
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .toolbar-actions {
@@ -442,6 +446,7 @@ body {
   font-size: 14px;
   line-height: 1.6;
   user-select: text;
+  -webkit-user-select: text;
 }
 
 /* Modals and Overlays Styling (Sleek Glassmorphic Dialogs) */
@@ -588,6 +593,8 @@ body {
   font-size: 14px;
   outline: none;
   transition: all 0.2s ease;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .vault-password-input:focus {
