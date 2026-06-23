@@ -107,7 +107,7 @@ function App() {
   const [summonShortcutLabel, setSummonShortcutLabel] = useState("Alt+Space");
   const [aboutAutoCheck, setAboutAutoCheck] = useState(false);
   const [appVersionLabel, setAppVersionLabel] = useState("v2.1 beta");
-  const [isLinux] = useState(() => isLinuxDesktop());
+  const [isLinux, setIsLinux] = useState(false);
   const [showLineNumbers, setShowLineNumbers] = useState(false);
   const [closePromptOpen, setClosePromptOpen] = useState(false);
   const pendingWindowClose = useRef(false);
@@ -223,6 +223,10 @@ function App() {
     },
     [isLinux]
   );
+
+  useEffect(() => {
+    setIsLinux(isLinuxDesktop());
+  }, []);
 
   useEffect(() => {
     if (isLinux) {
@@ -540,14 +544,20 @@ function App() {
     } else {
       await saveNoteNow();
     }
-    if (isLinux) {
+    const onLinux = isLinuxDesktop();
+    if (onLinux) {
       quittingRef.current = true;
-      await quitDesktopApp();
+      try {
+        await quitDesktopApp();
+      } catch (error) {
+        quittingRef.current = false;
+        console.error("Quit failed:", error);
+      }
       return;
     }
     const win = getPlatformWindow();
     await win.destroy();
-  }, [isLinux, flushPendingSave, saveNoteNow]);
+  }, [flushPendingSave, saveNoteNow]);
 
   const scheduleSaveNote = useCallback(
     (overrideContent?: string, overrideTitle?: string, forceVault?: boolean) => {
@@ -612,7 +622,7 @@ function App() {
   }, [saveNoteNow, closeApp]);
 
   useEffect(() => {
-    if (!isLinux || !isTauri()) {
+    if (!isLinuxDesktop() || !isTauri()) {
       return;
     }
     let unlisten: (() => void) | undefined;
@@ -633,7 +643,7 @@ function App() {
     return () => {
       unlisten?.();
     };
-  }, [isLinux, saveNoteNow, closeApp]);
+  }, [saveNoteNow, closeApp]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

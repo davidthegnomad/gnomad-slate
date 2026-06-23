@@ -140,6 +140,9 @@ fn confirm_quit(app: AppHandle, state: tauri::State<AppState>) {
     vault_session::close_session(&state.vault_session);
     tracing::info!("application exit confirmed");
     app.exit(0);
+    // Global shortcut plugin can keep the event loop alive after app.exit on Linux.
+    #[cfg(target_os = "linux")]
+    std::process::exit(0);
 }
 
 #[tauri::command]

@@ -3,6 +3,7 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::shortcuts::SUMMON_SHORTCUT;
+use crate::emit_quit_requested;
 use super::{emit_to_frontend, focus_main_window};
 
 pub fn install(app: &AppHandle) -> tauri::Result<()> {
@@ -37,7 +38,8 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
     let delete_note = MenuItem::with_id(app, "delete_note", "Delete Current Note", true, None::<&str>)?;
     let archive_stale =
         MenuItem::with_id(app, "archive_stale", "Archive Stale Scratchpad Notes", true, None::<&str>)?;
-    let quit = PredefinedMenuItem::quit(app, Some("Quit Gnomad Slate"))?;
+    let file_close = MenuItem::with_id(app, "file_close", "Close", true, Some("Ctrl+W"))?;
+    let file_quit = MenuItem::with_id(app, "file_quit", "Quit Gnomad Slate", true, Some("Ctrl+Q"))?;
 
     let file_submenu = Submenu::with_items(
         app,
@@ -52,7 +54,8 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
             &delete_note,
             &archive_stale,
             &PredefinedMenuItem::separator(app)?,
-            &quit,
+            &file_close,
+            &file_quit,
         ],
     )?;
 
@@ -178,9 +181,10 @@ pub fn handle_event(app: &AppHandle, event_id: &str) {
         "window_show" => {
             crate::menu_show_main_window(app);
         }
-        "window_close" => {
+        "window_close" | "file_close" => {
             emit_to_frontend(app, "window-close-requested");
         }
+        "file_quit" => emit_quit_requested(app),
         "contact_support" => {
             let _ = app.opener().open_url(
                 "mailto:david@gnomadstudio.org?subject=Gnomad%20Slate%20Linux%20Support",
