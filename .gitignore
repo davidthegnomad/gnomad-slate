@@ -26,3 +26,10 @@ src-tauri/target/
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets
+.env
+.env.*
+
+# Review run logs
+reviews/review-run.log

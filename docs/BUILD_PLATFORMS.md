@@ -59,7 +59,8 @@ npm run tauri:build:ci
 | OS | Shortcut |
 |----|----------|
 | macOS | `Option+Space` |
-| Windows / Linux | `Alt+Space` |
+| Windows | `Alt+Space` |
+| Linux | `Super+Shift+Space` |
 
 ### Linux dependencies
 
@@ -67,7 +68,7 @@ npm run tauri:build:ci
 bash scripts/install-linux-deps.sh
 ```
 
-Requires **webkit2gtk 4.1** dev headers (Tauri 2).
+Requires **webkit2gtk 4.1** and **libsoup3** dev headers (Tauri 2). See [LINUX_DESKTOP.md](LINUX_DESKTOP.md).
 
 ### macOS
 - Hide-on-blur when losing focus (launcher behavior)
