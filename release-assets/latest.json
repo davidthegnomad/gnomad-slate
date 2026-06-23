@@ -1,11 +1,11 @@
 {
-  "version": "2.1.0-beta.1",
-  "notes": "Gnomad Slate v2.1 beta for macOS (Apple Silicon). Scratchpad, Saved notes, Vault-X secrets, About menu, and in-app updates.",
-  "pub_date": "2026-06-08T21:35:00Z",
+  "version": "2.1.0-beta.2",
+  "notes": "Gnomad Slate v2.1.0-beta.2 for macOS (Apple Silicon). Fixes copy/paste shortcuts (Edit menu), unsaved-close prompt, and cross-platform polish.",
+  "pub_date": "2026-06-23T17:05:00Z",
   "platforms": {
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUY3QwSnNYcEtxQWFYQVpYdHAzbVRyazY1aVBTODRkSU9CUUE2aGlQYmZJV085emF3b05yZG1CWDZZemh1WU9VdkFMY0EzU3pneTY0R0pML080SDZqZ0ZzSnd5WDYvbkFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwOTU0MzA5CWZpbGU6R25vbWFkLVNsYXRlXzIuMS4wLWJldGEuMV9hYXJjaDY0LmFwcC50YXIuZ3oKVmpXRm5FNUx0WjJkTEFmUWNGNGhzdVNqSEkyZnM2SEN3QkNOaGxrZExxa3M4TmZiSEhlRHpxZWF3MytjU05oUStpNHlHMHMweDlIVCtZZDdRQ3k4Q1E9PQo=",
-      "url": "https://github.com/davidthegnomad/gnomad-slate/releases/download/v2.1.0-beta.1/Gnomad-Slate_2.1.0-beta.1_aarch64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUY3QwSnNYcEtxQWM4ODFvYmxXVEdmNU5rQzdaR3dLcGIrWHlwRnhQMU9QM2cvSjF6WDdhQVl1WGpuTkVqWTd6T3BJQlliRHFyQTVYZFphL05rZVVoZ3A1VWdqWFJNendRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMjM0MjU4CWZpbGU6R25vbWFkLVNsYXRlXzIuMS4wLWJldGEuMl9hYXJjaDY0LmFwcC50YXIuZ3oKaW1SZnZFVkx3eXVFQVZCRjZ6aXJIOWxKZEdWN0ZqWks1WTQvQ2pnOUd6dUxDK3BhNytSellFOEUxdlpHeHY1Sk1adkpKWENYZFFVQzM2eVQveGdwQkE9PQo=",
+      "url": "https://github.com/davidthegnomad/gnomad-slate/releases/download/v2.1.0-beta.2/Gnomad-Slate_2.1.0-beta.2_aarch64.app.tar.gz"
     }
   }
 }

@@ -590,9 +590,13 @@ function App() {
         try {
           const text = await navigator.clipboard.readText();
           if (text && text.trim()) {
-            await new Promise<void>((resolve) => {
-              chrome.runtime.sendMessage({ type: "record-clipboard", text }, () => resolve());
-            });
+            const chromeApi = (globalThis as { chrome?: typeof chrome }).chrome;
+            const runtime = chromeApi?.runtime;
+            if (runtime?.sendMessage) {
+              await new Promise<void>((resolve) => {
+                runtime.sendMessage!({ type: "record-clipboard", text }, () => resolve());
+              });
+            }
           }
         } catch (clipErr) {
           // silent ignore if permission not yet granted

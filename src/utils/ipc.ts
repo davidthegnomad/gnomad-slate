@@ -17,21 +17,32 @@ export async function openUrl(url: string): Promise<void> {
   }
 }
 
+/** Chrome extension API when running outside Tauri (optional). */
+function extensionChrome(): typeof chrome | undefined {
+  return (globalThis as { chrome?: typeof chrome }).chrome;
+}
+
 /** Platform-agnostic invoke wrapper */
 export async function invoke<T>(cmd: string, args?: Record<string, any>): Promise<T> {
   if (isTauri()) {
     return tauriInvoke<T>(cmd, args);
   } else {
-    // Chrome Extension messaging fallback
-    if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
+    const chromeApi = extensionChrome();
+    const runtime = chromeApi?.runtime;
+    if (runtime?.sendMessage) {
       return new Promise<T>((resolve, reject) => {
-        chrome.runtime.sendMessage({ type: "tauri-command", cmd, args }, (response) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-          } else if (response && response.error) {
-            reject(response.error);
+        runtime.sendMessage!({ type: "tauri-command", cmd, args }, (response: unknown) => {
+          if (runtime.lastError) {
+            reject(new Error(runtime.lastError.message));
+          } else if (
+            response &&
+            typeof response === "object" &&
+            "error" in response &&
+            (response as { error?: unknown }).error
+          ) {
+            reject((response as { error: unknown }).error);
           } else {
-            resolve(response?.data as T);
+            resolve((response as { data?: T } | undefined)?.data as T);
           }
         });
       });
@@ -45,16 +56,22 @@ export function listen<T>(event: string, handler: (event: { payload: T }) => voi
   if (isTauri()) {
     return tauriListen<T>(event, handler);
   } else {
-    // Browser extension event fallback via chrome.runtime.onMessage
-    if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
-      const listener = (message: any) => {
-        if (message && message.type === "tauri-event" && message.event === event) {
-          handler({ payload: message.payload });
+    const chromeApi = extensionChrome();
+    const onMessage = chromeApi?.runtime?.onMessage;
+    if (onMessage) {
+      const listener = (message: unknown) => {
+        if (
+          message &&
+          typeof message === "object" &&
+          (message as { type?: string; event?: string }).type === "tauri-event" &&
+          (message as { event?: string }).event === event
+        ) {
+          handler({ payload: (message as { payload: T }).payload });
         }
       };
-      chrome.runtime.onMessage.addListener(listener);
+      onMessage.addListener(listener);
       return Promise.resolve(() => {
-        chrome.runtime.onMessage.removeListener(listener);
+        onMessage.removeListener(listener);
       });
     }
     return Promise.resolve(() => {});
@@ -70,6 +87,7 @@ export const getPlatformWindow = () => {
       setSize: (size: any) => win.setSize(size),
       setTheme: (theme: "light" | "dark") => win.setTheme(theme),
       setBackgroundColor: (color: string) => win.setBackgroundColor(color),
+      destroy: () => win.destroy(),
     };
   } else {
     // Mock window methods for extension environment
@@ -83,6 +101,9 @@ export const getPlatformWindow = () => {
       },
       setBackgroundColor: async (_color: string) => {
         // Handled via CSS, so do nothing
+      },
+      destroy: async () => {
+        window.close();
       },
     };
   }
