@@ -70,7 +70,7 @@ pub fn start_clipboard_monitor(
         let mut clipboard = match Clipboard::new() {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("Clipboard Monitor Error: Failed to initialize arboard clipboard: {}", e);
+                tracing::error!("clipboard monitor: failed to initialize arboard: {e}");
                 return;
             }
         };

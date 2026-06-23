@@ -3,6 +3,9 @@ pub mod clipboard;
 pub mod clipboard_filter;
 pub mod crypto;
 pub mod filesystem;
+#[cfg(target_os = "linux")]
+pub mod linux_tray;
+pub mod logging;
 pub mod macos_app;
 pub mod menu;
 pub mod pasteboard_macos;
@@ -10,7 +13,9 @@ pub mod unlock_limiter;
 pub mod vault_session;
 
 use serde::Serialize;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(target_os = "macos")]
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use arboard::Clipboard;
 use tauri::{AppHandle, Emitter, Manager, RunEvent};
@@ -43,10 +48,17 @@ fn get_app_version_info() -> AppVersionInfo {
         "alpha"
     };
 
+    let version = env!("CARGO_PKG_VERSION").to_string();
+    let display_version = if cfg!(target_os = "linux") {
+        format!("v{version}")
+    } else {
+        format!("v2.1 {channel}")
+    };
+
     AppVersionInfo {
-        version: env!("CARGO_PKG_VERSION").to_string(),
+        version,
         channel: channel.to_string(),
-        display_version: format!("v2.1 {channel}"),
+        display_version,
     }
 }
 
@@ -55,8 +67,13 @@ fn vault_file_path() -> std::path::PathBuf {
 }
 
 fn write_encrypted_vault(data: &[u8]) -> Result<(), String> {
-    std::fs::write(vault_file_path(), data)
-        .map_err(|e| format!("Failed to write secure vault: {}", e))
+    let path = vault_file_path();
+    let tmp = path.with_extension("enc.tmp");
+    std::fs::write(&tmp, data).map_err(|e| format!("Failed to write secure vault: {}", e))?;
+    std::fs::rename(&tmp, &path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        format!("Failed to finalize secure vault: {}", e)
+    })
 }
 
 fn persist_vault(state: &AppState) -> Result<(), String> {
@@ -103,7 +120,24 @@ fn read_note(filename: String) -> Result<String, String> {
 
 #[tauri::command]
 fn get_summon_shortcut_label() -> String {
-    "Alt+Space".to_string()
+    if cfg!(target_os = "linux") {
+        "Super+Shift+Space".to_string()
+    } else {
+        "Alt+Space".to_string()
+    }
+}
+
+#[tauri::command]
+fn prepare_for_quit(state: tauri::State<AppState>) {
+    vault_session::close_session(&state.vault_session);
+}
+
+#[tauri::command]
+fn request_quit(app: AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.destroy();
+    }
+    app.exit(0);
 }
 
 #[tauri::command]
@@ -266,6 +300,7 @@ fn delete_secret(index: usize, state: tauri::State<AppState>) -> Result<(), Stri
 }
 
 static INTENTIONALLY_HIDDEN: AtomicBool = AtomicBool::new(false);
+#[cfg(target_os = "macos")]
 static APP_WAS_ACTIVE: AtomicBool = AtomicBool::new(true);
 
 fn show_main_window(app: &AppHandle) {
@@ -286,6 +321,14 @@ fn hide_main_window(app: &AppHandle, intentional: bool) {
     }
 }
 
+pub(crate) fn menu_show_main_window(app: &AppHandle) {
+    show_main_window(app);
+}
+
+pub(crate) fn menu_hide_main_window(app: &AppHandle) {
+    hide_main_window(app, true);
+}
+
 fn toggle_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         match window.is_visible() {
@@ -296,24 +339,41 @@ fn toggle_window(app: &AppHandle) {
 }
 
 fn maybe_show_on_app_activate(app: &AppHandle) {
-    let active = crate::macos_app::application_is_active();
-    let was_active = APP_WAS_ACTIVE.swap(active, Ordering::SeqCst);
-
-    if !active || was_active || INTENTIONALLY_HIDDEN.load(Ordering::SeqCst) {
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
         return;
     }
+    #[cfg(target_os = "macos")]
+    {
+        let active = crate::macos_app::application_is_active();
+        let was_active = APP_WAS_ACTIVE.swap(active, Ordering::SeqCst);
 
-    if let Some(window) = app.get_webview_window("main") {
-        if window.is_visible().unwrap_or(true) == false {
-            show_main_window(app);
+        if !active || was_active || INTENTIONALLY_HIDDEN.load(Ordering::SeqCst) {
+            return;
+        }
+
+        if let Some(window) = app.get_webview_window("main") {
+            if window.is_visible().unwrap_or(true) == false {
+                show_main_window(app);
+            }
         }
     }
 }
 
+fn summon_shortcut() -> &'static str {
+    if cfg!(target_os = "linux") {
+        "Super+Shift+Space"
+    } else {
+        "Alt+Space"
+    }
+}
+
 fn register_global_shortcut(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let shortcut = summon_shortcut();
     app.plugin(
         tauri_plugin_global_shortcut::Builder::new()
-            .with_shortcuts(["Alt+Space"])?
+            .with_shortcuts([shortcut])?
             .with_handler(|app, _shortcut, event| {
                 if event.state() == ShortcutState::Pressed {
                     toggle_window(app);
@@ -321,10 +381,11 @@ fn register_global_shortcut(app: &AppHandle) -> Result<(), Box<dyn std::error::E
             })
             .build(),
     )?;
-    eprintln!("Gnomad Slate: registered global shortcut Alt+Space (Option+Space on macOS)");
+    tracing::info!("registered global shortcut {shortcut}");
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
 fn attach_hide_on_blur(window: &tauri::WebviewWindow) {
     let hide_generation = Arc::new(AtomicU64::new(0));
     let window_for_events = window.clone();
@@ -358,8 +419,15 @@ fn attach_hide_on_blur(window: &tauri::WebviewWindow) {
     });
 }
 
+#[cfg(not(target_os = "macos"))]
+fn attach_window_close_handler(_window: &tauri::WebviewWindow) {
+    // Native close is handled via getCurrentWindow().onCloseRequested in the frontend (Linux).
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    logging::init();
+
     let clipboard_history = Arc::new(Mutex::new(ClipboardHistory::new(15)));
     let clipboard_filter_enabled = Arc::new(Mutex::new(true));
     clipboard::start_clipboard_monitor(
@@ -372,8 +440,10 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_store::Builder::new().build())
         .manage(AppState {
             clipboard_history,
             clipboard_filter_enabled,
@@ -382,16 +452,24 @@ pub fn run() {
         })
         .setup(move |app| {
             if let Err(e) = menu::install_app_menu(&app.handle()) {
-                eprintln!("Gnomad Slate: failed to install app menu: {e}");
+                tracing::warn!("failed to install app menu: {e}");
             }
 
             #[cfg(desktop)]
             if let Err(e) = register_global_shortcut(&app.handle()) {
-                eprintln!("Gnomad Slate: failed to register global shortcut: {e}");
+                tracing::warn!("failed to register global shortcut: {e}");
+            }
+
+            #[cfg(target_os = "linux")]
+            if let Err(e) = linux_tray::install_tray(&app.handle()) {
+                tracing::warn!("failed to install system tray: {e}");
             }
 
             if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "macos")]
                 attach_hide_on_blur(&window);
+                #[cfg(not(target_os = "macos"))]
+                attach_window_close_handler(&window);
             }
 
             Ok(())
@@ -402,6 +480,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_app_version_info,
             get_summon_shortcut_label,
+            prepare_for_quit,
+            request_quit,
             copy_text_to_clipboard,
             get_clipboard_history,
             get_clipboard_filter_enabled,
@@ -427,6 +507,10 @@ pub fn run() {
         .run(|app_handle, event| {
             if let RunEvent::MainEventsCleared = event {
                 maybe_show_on_app_activate(app_handle);
+            }
+            if let RunEvent::ExitRequested { api, .. } = event {
+                api.prevent_exit();
+                let _ = app_handle.emit("app-quit-requested", ());
             }
         });
 }
