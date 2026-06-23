@@ -17,65 +17,29 @@ export async function openUrl(url: string): Promise<void> {
   }
 }
 
-/** Chrome extension API when running outside Tauri (optional). */
-function extensionChrome(): typeof chrome | undefined {
-  return (globalThis as { chrome?: typeof chrome }).chrome;
-}
-
-/** Platform-agnostic invoke wrapper */
-export async function invoke<T>(cmd: string, args?: Record<string, any>): Promise<T> {
+/** Platform-agnostic invoke wrapper (Tauri desktop only). */
+export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (isTauri()) {
     return tauriInvoke<T>(cmd, args);
-  } else {
-    const chromeApi = extensionChrome();
-    const runtime = chromeApi?.runtime;
-    if (runtime?.sendMessage) {
-      return new Promise<T>((resolve, reject) => {
-        runtime.sendMessage!({ type: "tauri-command", cmd, args }, (response: unknown) => {
-          if (runtime.lastError) {
-            reject(new Error(runtime.lastError.message));
-          } else if (
-            response &&
-            typeof response === "object" &&
-            "error" in response &&
-            (response as { error?: unknown }).error
-          ) {
-            reject((response as { error: unknown }).error);
-          } else {
-            resolve((response as { data?: T } | undefined)?.data as T);
-          }
-        });
-      });
-    }
-    return Promise.reject(new Error("No platform IPC handler available"));
   }
+  return Promise.reject(new Error("Desktop IPC is only available in the Tauri app"));
 }
 
-/** Platform-agnostic event listener wrapper */
+/** Platform-agnostic event listener wrapper (Tauri desktop only). */
 export function listen<T>(event: string, handler: (event: { payload: T }) => void): Promise<() => void> {
   if (isTauri()) {
     return tauriListen<T>(event, handler);
-  } else {
-    const chromeApi = extensionChrome();
-    const onMessage = chromeApi?.runtime?.onMessage;
-    if (onMessage) {
-      const listener = (message: unknown) => {
-        if (
-          message &&
-          typeof message === "object" &&
-          (message as { type?: string; event?: string }).type === "tauri-event" &&
-          (message as { event?: string }).event === event
-        ) {
-          handler({ payload: (message as { payload: T }).payload });
-        }
-      };
-      onMessage.addListener(listener);
-      return Promise.resolve(() => {
-        onMessage.removeListener(listener);
-      });
-    }
-    return Promise.resolve(() => {});
   }
+  return Promise.resolve(() => {});
+}
+
+/** Destroy the window and exit the process on Linux (global shortcut keeps app alive otherwise). */
+export async function quitDesktopApp(): Promise<void> {
+  if (!isTauri()) {
+    window.close();
+    return;
+  }
+  await tauriInvoke("request_quit");
 }
 
 /** Platform-agnostic window helper */
