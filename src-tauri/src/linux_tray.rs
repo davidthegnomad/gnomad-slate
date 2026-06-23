@@ -2,9 +2,9 @@
 
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
-use crate::{menu_hide_main_window, menu_show_main_window};
+use crate::{emit_quit_requested, menu_hide_main_window, menu_show_main_window};
 
 pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
     let show = MenuItem::with_id(app, "tray_show", "Show Gnomad Slate", true, None::<&str>)?;
@@ -14,7 +14,10 @@ pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
 
     let icon = match app.default_window_icon() {
         Some(i) => i.clone(),
-        None => return Ok(()),
+        None => {
+            tracing::warn!("no window icon available for system tray");
+            return Ok(());
+        }
     };
 
     let _tray = TrayIconBuilder::with_id("gnomad-slate-tray")
@@ -24,9 +27,7 @@ pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "tray_show" => menu_show_main_window(app),
             "tray_hide" => menu_hide_main_window(app),
-            "tray_quit" => {
-                let _ = app.emit("app-quit-requested", ());
-            }
+            "tray_quit" => emit_quit_requested(app),
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {

@@ -111,6 +111,7 @@ function App() {
   const [showLineNumbers, setShowLineNumbers] = useState(false);
   const [closePromptOpen, setClosePromptOpen] = useState(false);
   const pendingWindowClose = useRef(false);
+  const quittingRef = useRef(false);
   const settingsReady = useRef(false);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -531,21 +532,22 @@ function App() {
   }, [saveActiveNote]);
 
   const closeApp = useCallback(async () => {
+    if (quittingRef.current) {
+      return;
+    }
     if (saveDebounceRef.current) {
       await flushPendingSave();
     } else {
       await saveNoteNow();
     }
-    if (isVaultUnlocked) {
-      await invoke("prepare_for_quit");
-    }
     if (isLinux) {
+      quittingRef.current = true;
       await quitDesktopApp();
       return;
     }
     const win = getPlatformWindow();
     await win.destroy();
-  }, [isLinux, isVaultUnlocked, flushPendingSave, saveNoteNow]);
+  }, [isLinux, flushPendingSave, saveNoteNow]);
 
   const scheduleSaveNote = useCallback(
     (overrideContent?: string, overrideTitle?: string, forceVault?: boolean) => {
@@ -636,6 +638,9 @@ function App() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     void listen("app-quit-requested", () => {
+      if (quittingRef.current) {
+        return;
+      }
       if (saveDebounceRef.current) {
         pendingWindowClose.current = true;
         setClosePromptOpen(true);

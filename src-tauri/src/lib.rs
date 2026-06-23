@@ -9,6 +9,7 @@ pub mod logging;
 pub mod macos_app;
 pub mod menu;
 pub mod pasteboard_macos;
+pub mod shortcuts;
 pub mod unlock_limiter;
 pub mod vault_session;
 
@@ -120,23 +121,24 @@ fn read_note(filename: String) -> Result<String, String> {
 
 #[tauri::command]
 fn get_summon_shortcut_label() -> String {
-    if cfg!(target_os = "linux") {
-        "Super+Shift+Space".to_string()
-    } else {
-        "Alt+Space".to_string()
-    }
+    shortcuts::summon_shortcut().to_string()
 }
 
+/// Legacy command — prefer `confirm_quit` which locks the vault and exits atomically.
 #[tauri::command]
 fn prepare_for_quit(state: tauri::State<AppState>) {
     vault_session::close_session(&state.vault_session);
 }
 
+/// Called by the frontend after save/cleanup. Backend locks vault and exits (no window.destroy IPC race).
 #[tauri::command]
-fn request_quit(app: AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.destroy();
+fn confirm_quit(app: AppHandle, state: tauri::State<AppState>) {
+    if QUIT_IN_PROGRESS.swap(true, Ordering::SeqCst) {
+        tracing::debug!("confirm_quit ignored — already quitting");
+        return;
     }
+    vault_session::close_session(&state.vault_session);
+    tracing::info!("application exit confirmed");
     app.exit(0);
 }
 
@@ -300,8 +302,16 @@ fn delete_secret(index: usize, state: tauri::State<AppState>) -> Result<(), Stri
 }
 
 static INTENTIONALLY_HIDDEN: AtomicBool = AtomicBool::new(false);
+static QUIT_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 #[cfg(target_os = "macos")]
 static APP_WAS_ACTIVE: AtomicBool = AtomicBool::new(true);
+
+pub(crate) fn emit_quit_requested(app: &AppHandle) {
+    if QUIT_IN_PROGRESS.load(Ordering::SeqCst) {
+        return;
+    }
+    let _ = app.emit("app-quit-requested", ());
+}
 
 fn show_main_window(app: &AppHandle) {
     INTENTIONALLY_HIDDEN.store(false, Ordering::SeqCst);
@@ -362,11 +372,7 @@ fn maybe_show_on_app_activate(app: &AppHandle) {
 }
 
 fn summon_shortcut() -> &'static str {
-    if cfg!(target_os = "linux") {
-        "Super+Shift+Space"
-    } else {
-        "Alt+Space"
-    }
+    shortcuts::summon_shortcut()
 }
 
 fn register_global_shortcut(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
@@ -481,7 +487,7 @@ pub fn run() {
             get_app_version_info,
             get_summon_shortcut_label,
             prepare_for_quit,
-            request_quit,
+            confirm_quit,
             copy_text_to_clipboard,
             get_clipboard_history,
             get_clipboard_filter_enabled,
@@ -510,7 +516,7 @@ pub fn run() {
             }
             if let RunEvent::ExitRequested { api, .. } = event {
                 api.prevent_exit();
-                let _ = app_handle.emit("app-quit-requested", ());
+                emit_quit_requested(app_handle);
             }
         });
 }

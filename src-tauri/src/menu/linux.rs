@@ -2,6 +2,7 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
+use crate::shortcuts::SUMMON_SHORTCUT;
 use super::{emit_to_frontend, focus_main_window};
 
 pub fn install(app: &AppHandle) -> tauri::Result<()> {
@@ -112,7 +113,7 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
     )?;
 
     let window_minimize = MenuItem::with_id(app, "window_minimize", "Minimize", true, None::<&str>)?;
-    let window_hide = MenuItem::with_id(app, "window_hide", "Hide Window", true, Some("Super+Shift+Space"))?;
+    let window_hide = MenuItem::with_id(app, "window_hide", "Hide Window", true, Some(SUMMON_SHORTCUT))?;
     let window_show = MenuItem::with_id(app, "window_show", "Show Window", true, None::<&str>)?;
     let window_close = MenuItem::with_id(app, "window_close", "Close Window", true, None::<&str>)?;
 

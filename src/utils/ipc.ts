@@ -33,13 +33,13 @@ export function listen<T>(event: string, handler: (event: { payload: T }) => voi
   return Promise.resolve(() => {});
 }
 
-/** Destroy the window and exit the process on Linux (global shortcut keeps app alive otherwise). */
+/** After frontend save/cleanup: backend locks vault and exits (Linux). */
 export async function quitDesktopApp(): Promise<void> {
   if (!isTauri()) {
     window.close();
     return;
   }
-  await tauriInvoke("request_quit");
+  await tauriInvoke("confirm_quit");
 }
 
 /** Platform-agnostic window helper */

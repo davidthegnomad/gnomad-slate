@@ -92,8 +92,19 @@ NIM does not expose per-token $0 flags in the `/v1/models` listing. Access is vi
 | Purpose | OpenRouter | NVIDIA NIM |
 |---------|------------|------------|
 | Nemotron 3 Ultra | `nvidia/nemotron-3-ultra-550b-a55b:free` | `nvidia/nemotron-3-ultra-550b-a55b` |
-| GLM 5 latest | `z-ai/glm-5.2` | `z-ai/glm-5.1` (latest on NIM catalog) |
-| Code review alt | `qwen/qwen3-coder:free` | `deepseek-ai/deepseek-v4-flash` |
+| GLM 5 latest | `z-ai/glm-5.2` | `z-ai/glm-5.1` |
+| Code review (Qwen3 Coder) | `qwen/qwen3-coder:free` | **not on NIM** — use below |
+| Kimi (closest to “Kimi coder”) | — | `moonshotai/kimi-k2.6` |
+| Qwen on NIM | — | `qwen/qwen3.5-122b-a10b`, `qwen/qwen3-next-80b-a3b-instruct` |
+| DeepSeek code / fast review | — | `deepseek-ai/deepseek-v4-flash`, `deepseek-ai/deepseek-coder-6.7b-instruct` |
+
+Run NIM coder review:
+
+```bash
+python3 reviews/run-nim-coder-review.py --model kimi    # default
+python3 reviews/run-nim-coder-review.py --model qwen
+python3 reviews/run-nim-coder-review.py --model deepseek
+```
 
 ---
 

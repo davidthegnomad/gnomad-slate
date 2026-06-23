@@ -31,7 +31,7 @@ Requires **WebKit2GTK 4.1** and **libsoup3** (Tauri 2).
 |--------|-----|
 | Summon / hide | `Super+Shift+Space` (global shortcut) |
 | Show when hidden | System tray icon (left-click) or **Window → Show** |
-| Quit | **File → Quit**, tray **Quit**, or close window (save prompt if needed) |
+| Quit | **File → Quit**, tray **Quit**, or close window → save if needed → backend `confirm_quit` (vault lock + exit) |
 
 Linux does **not** use macOS hide-on-blur. The app stays visible until you hide it or quit.
 
