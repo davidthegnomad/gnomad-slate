@@ -44,6 +44,8 @@ npm run docs:export
 | Roadmap | [ROADMAP.md](ROADMAP.md) | [ROADMAP.html](ROADMAP.html) | [ROADMAP.txt](ROADMAP.txt) |
 | Release runbook | [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) | [RELEASE_RUNBOOK.html](RELEASE_RUNBOOK.html) | [RELEASE_RUNBOOK.txt](RELEASE_RUNBOOK.txt) |
 | Troubleshooting | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | [TROUBLESHOOTING.html](TROUBLESHOOTING.html) | [TROUBLESHOOTING.txt](TROUBLESHOOTING.txt) |
+| **Linux desktop** | [LINUX_DESKTOP.md](LINUX_DESKTOP.md) | — | — |
+| **Linux session log (2026-06-23)** | [LINUX_SESSION_2026-06-23.md](LINUX_SESSION_2026-06-23.md) | — | — |
 | Accessibility | [ACCESSIBILITY.md](ACCESSIBILITY.md) | [ACCESSIBILITY.html](ACCESSIBILITY.html) | [ACCESSIBILITY.txt](ACCESSIBILITY.txt) |
 | Test strategy (14 Rust + 4 Vitest) | [TEST_STRATEGY.md](TEST_STRATEGY.md) | [TEST_STRATEGY.html](TEST_STRATEGY.html) | [TEST_STRATEGY.txt](TEST_STRATEGY.txt) |
 | Demo Script | [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | [DEMO_SCRIPT.html](DEMO_SCRIPT.html) | [DEMO_SCRIPT.txt](DEMO_SCRIPT.txt) |

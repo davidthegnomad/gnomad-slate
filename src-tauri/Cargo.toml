@@ -1,6 +1,6 @@
 [package]
 name = "tauri-app"
-version = "2.1.0-beta.2"
+version = "2.1.0-beta.3"
 description = "Gnomad Slate — desktop scratchpad and encrypted secrets vault"
 authors = ["Gnomad Studio"]
 edition = "2021"
