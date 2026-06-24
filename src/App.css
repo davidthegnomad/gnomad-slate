@@ -896,6 +896,11 @@ body {
   overflow: hidden;
 }
 
+.editor-input-wrap-lined .text-textarea {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
 .line-numbers-gutter {
   overflow: hidden;
   flex: 0 0 auto;

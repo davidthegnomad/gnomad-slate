@@ -12,7 +12,9 @@ Press Super+Shift+Space from anywhere to summon or hide the window. If the windo
 
 Ctrl+S saves the current note. If you're on a scratchpad draft, Ctrl+S promotes it to a saved note. Ctrl+N starts a new scratchpad draft.
 
-Use Edit, Split, or Preview in the toolbar to change how you work with markdown.`,
+Use Edit, Split, or Preview in the toolbar to change how you work with markdown.
+
+Line numbers appear in Edit and Split modes. Toggle them with the "# Lines" button in the toolbar or View → Show Line Numbers.`,
   },
   {
     title: "Command palette & clipboard",

@@ -107,8 +107,8 @@ function App() {
   const [summonShortcutLabel, setSummonShortcutLabel] = useState("Alt+Space");
   const [aboutAutoCheck, setAboutAutoCheck] = useState(false);
   const [appVersionLabel, setAppVersionLabel] = useState("v2.1 beta");
-  const [isLinux, setIsLinux] = useState(false);
-  const [showLineNumbers, setShowLineNumbers] = useState(false);
+  const [isLinux, setIsLinux] = useState(() => isLinuxDesktop());
+  const [showLineNumbers, setShowLineNumbers] = useState(() => isLinuxDesktop());
   const [closePromptOpen, setClosePromptOpen] = useState(false);
   const pendingWindowClose = useRef(false);
   const quittingRef = useRef(false);
@@ -162,6 +162,8 @@ function App() {
       const lineNumbers = await readSetting("gnomad-line-numbers");
       if (lineNumbers === "true") {
         setShowLineNumbers(true);
+      } else if (lineNumbers === "false") {
+        setShowLineNumbers(false);
       }
       settingsReady.current = true;
       void invoke("set_clipboard_filter_enabled", { enabled: clipEnabled });
