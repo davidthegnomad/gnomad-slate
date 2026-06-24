@@ -73,7 +73,7 @@ cd slate_win64 && npm run tauri:build
 |----------|------|-----------|
 | **macOS** | root | `.app`, `.dmg`, `.app.tar.gz` |
 | **Linux** | root | `.deb`, `.rpm`, AppImage |
-| **Windows** | `slate_win64` | `.msi`, `.exe` (NSIS) |
+| **Windows** | `slate_win64` | `.exe` (NSIS) |
 
 ---
 

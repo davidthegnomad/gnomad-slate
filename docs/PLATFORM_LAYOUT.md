@@ -50,7 +50,7 @@ Installers are published to [GitHub Releases](https://github.com/davidthegnomad/
 |----------|-------------------|
 | **macOS** | `.dmg`, `.app.tar.gz` (Apple Silicon + Intel) |
 | **Linux** | `.deb`, `.rpm`, AppImage |
-| **Windows** | `.msi`, `.exe` (NSIS) from `slate_win64` builds |
+| **Windows** | `.exe` (NSIS) from `slate_win64` builds — MSI ships at `1.0.0` stable (WiX rejects alpha semver) |
 
 ---
 

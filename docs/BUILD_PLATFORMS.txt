@@ -76,7 +76,7 @@ PRODUCTION BUILD
   Platform  |  Tree         |  Artifacts              
   macOS     |  root         |  .app, .dmg, .app.tar.gz
   Linux     |  root         |  .deb, .rpm, AppImage   
-  Windows   |  slate_win64  |  .msi, .exe (NSIS)      
+  Windows   |  slate_win64  |  .exe (NSIS)            
 
 ────────────────────────────────────────
 

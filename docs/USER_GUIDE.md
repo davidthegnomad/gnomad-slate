@@ -32,7 +32,7 @@ Download from **[GitHub Pages](https://davidthegnomad.github.io/gnomad-slate/)**
 |----------|---------|-----------|
 | macOS | 2.1.0-beta.4 | `.dmg`, `.app.tar.gz` |
 | Linux | 2.1.0-beta.4 | `.deb`, `.rpm`, AppImage |
-| Windows | 1.0.0-alpha.1 | `.msi`, `.exe` (built from `slate_win64/`) |
+| Windows | 1.0.0-alpha.1 (alpha 1.0) | `.exe` NSIS installer from `slate_win64/` (MSI deferred until stable) |
 
 See [BUILD_PLATFORMS.md](BUILD_PLATFORMS.md) and [PLATFORM_LAYOUT.md](PLATFORM_LAYOUT.md).
 
