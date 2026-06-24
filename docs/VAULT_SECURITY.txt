@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   VAULT & PASSWORD SECURITY
-  Gnomad Slate · docs/VAULT_SECURITY.md
+  Gnomad Slate · docs\VAULT_SECURITY.md
 ════════════════════════════════════════════════════════════════════════
 
 VAULT & PASSWORD SECURITY — GNOMAD SLATE

@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   DEMO SCRIPT
-  Gnomad Slate · docs/DEMO_SCRIPT.md
+  Gnomad Slate · docs\DEMO_SCRIPT.md
 ════════════════════════════════════════════════════════════════════════
 
 DEMO SCRIPT — GNOMAD SLATE

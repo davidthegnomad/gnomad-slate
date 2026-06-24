@@ -222,7 +222,7 @@ body {
   <div class="layout">
     <nav class="sidebar" aria-label="Table of contents">
           <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
-          <p class="doc-path">docs/TROUBLESHOOTING.md</p>
+          <p class="doc-path">docs\TROUBLESHOOTING.md</p>
           <a href="#app-won39t-start" class="toc-h2">App won&#39;t start</a>
 <a href="#global-shortcut-doesn39t-work" class="toc-h2">Global shortcut doesn&#39;t work</a>
 <a href="#vault-issues" class="toc-h2">Vault issues</a>
@@ -262,6 +262,8 @@ body {
 <h2 id="global-shortcut-doesn39t-work">Global shortcut doesn&#39;t work</h2><ul>
 <li>Confirm <strong>Option+Space</strong> isn&#39;t taken by another app.</li>
 <li>Check terminal for <code>failed to register global shortcut</code> on startup.</li>
+<li>On macOS, grant <strong>Accessibility</strong> permission: <strong>System Settings → Privacy &amp; Security → Accessibility</strong> → enable Gnomad Slate (or <code>tauri-app</code> in dev).</li>
+<li><strong>Click the Dock icon</strong> to bring Slate back if the window hid when you switched apps.</li>
 <li>On Linux, shortcut may differ — see <code>src-tauri/src/lib.rs</code>.</li>
 </ul>
 <hr>

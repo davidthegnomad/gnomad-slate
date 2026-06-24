@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gnomad Slate — Gnomad Slate</title>
+  <meta name="description" content="Gnomad Slate documentation for Gnomad Slate." />
+  <style>:root {
+  --bg-base: #0d1117;
+  --bg-panel: rgba(22, 27, 34, 0.95);
+  --bg-elevated: rgba(33, 38, 45, 0.98);
+  --border: rgba(48, 54, 61, 0.9);
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #818cf8;
+  --accent-secondary: #c084fc;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --pill-radius: 999px;
+  --radius: 12px;
+  --mesh:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.18), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 10% 30%, rgba(192, 132, 252, 0.1), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 95% 40%, rgba(129, 140, 248, 0.08), transparent 50%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg-base);
+  min-height: 100vh;
+}
+
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--mesh);
+  z-index: 0;
+}
+
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 1.5rem 1.25rem;
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.brand-icon { font-size: 1.5rem; }
+.brand h1 { font-size: 1rem; font-weight: 600; }
+
+.doc-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  word-break: break-all;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar a.toc-h3 { padding-left: 1.1rem; font-size: 0.78rem; }
+.sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.sidebar a.active { color: var(--accent); background: rgba(129, 140, 248, 0.12); }
+
+.content {
+  padding: 2rem 2.5rem 3rem;
+  max-width: 760px;
+}
+
+.hero { margin-bottom: 1.5rem; }
+.hero h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.formats { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+.formats a { color: var(--accent); }
+
+.doc-body h1 { font-size: 1.5rem; margin: 1.5rem 0 0.75rem; }
+.doc-body h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.doc-body h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; color: var(--accent); }
+.doc-body h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+
+.doc-body p { margin-bottom: 0.85rem; }
+.doc-body ul, .doc-body ol { margin: 0 0 1rem 1.25rem; color: var(--muted); }
+.doc-body li { margin-bottom: 0.35rem; }
+.doc-body li strong { color: var(--text); }
+
+.doc-body a { color: var(--accent); }
+.doc-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(255,255,255,0.08);
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  color: var(--accent-secondary);
+}
+
+.doc-body pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.doc-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 1rem 0;
+}
+
+.doc-body th, .doc-body td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-body th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.6rem 1rem;
+  margin: 1rem 0;
+  background: rgba(129, 140, 248, 0.08);
+  border-radius: 0 12px 12px 0;
+  color: var(--muted);
+}
+
+.doc-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.doc-footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.doc-footer a { color: var(--accent); text-decoration: none; }
+.doc-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="mesh-bg" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+          <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
+          <p class="doc-path">docs\LINUX_DESKTOP.md</p>
+          <a href="#build" class="toc-h2">Build</a>
+<a href="#launcher-behavior" class="toc-h2">Launcher behavior</a>
+<a href="#data-location" class="toc-h2">Data location</a>
+<a href="#wayland-notes" class="toc-h2">Wayland notes</a>
+<a href="#binary-amp-package" class="toc-h2">Binary &amp; package</a>
+<a href="#tests" class="toc-h2">Tests</a>
+<a href="#support" class="toc-h2">Support</a>
+        </nav>
+    <main class="content doc-body">
+      <header class="hero">
+        <h2>Gnomad Slate</h2>
+        <p class="formats">Also available: <a href="LINUX_DESKTOP.md">Markdown</a> · <a href="LINUX_DESKTOP.txt">Plain text</a></p>
+      </header>
+      <h1 id="gnomad-slate-linux-desktop">Gnomad Slate — Linux Desktop</h1><p><strong>Channel:</strong> alpha (see About dialog)<br><strong>Target:</strong> Nobara / Fedora, Wayland-first</p>
+<hr>
+<h2 id="build">Build</h2><pre><code class="language-bash">bash scripts/install-linux-deps.sh   # Fedora/Nobara (dnf)
+npm install
+npm run tauri:dev                    # dev + HMR
+npm run tauri:build                  # .rpm, .deb, AppImage
+</code></pre>
+<p><strong>Debian/Ubuntu deps:</strong></p>
+<pre><code class="language-bash">sudo apt install libwebkit2gtk-4.1-dev libsoup-3.0-dev libgtk-3-dev \
+  libappindicator3-dev librsvg2-dev patchelf
+</code></pre>
+<p>Requires <strong>WebKit2GTK 4.1</strong> and <strong>libsoup3</strong> (Tauri 2).</p>
+<hr>
+<h2 id="launcher-behavior">Launcher behavior</h2><table>
+<thead>
+<tr>
+<th>Action</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Summon / hide</td>
+<td><code>Super+Shift+Space</code> (global shortcut)</td>
+</tr>
+<tr>
+<td>Show when hidden</td>
+<td>System tray icon (left-click) or <strong>Window → Show</strong></td>
+</tr>
+<tr>
+<td>Quit</td>
+<td><strong>File → Quit</strong> (<code>Ctrl+Q</code>), tray <strong>Quit</strong>, or close window → save if needed → <code>confirm_quit</code></td>
+</tr>
+<tr>
+<td>Close (hide)</td>
+<td><strong>File → Close</strong> (<code>Ctrl+W</code>), window X, or <strong>Window → Hide</strong> — app stays in tray for summon</td>
+</tr>
+</tbody></table>
+<p>Linux does <strong>not</strong> use macOS hide-on-blur. The app stays visible until you hide it or quit.</p>
+<hr>
+<h2 id="data-location">Data location</h2><pre><code>~/.local/share/gnomad-slate/
+├── notes/
+├── vault.enc
+└── archive/
+</code></pre>
+<p>Settings (theme, clipboard filter, line numbers) persist via Tauri plugin-store (<code>settings.json</code> in app config dir).</p>
+<hr>
+<h2 id="wayland-notes">Wayland notes</h2><ul>
+<li><strong>App menu launch:</strong> the binary sets <code>GDK_BACKEND=x11</code> and <code>WEBKIT_DISABLE_DMABUF_RENDERER=1</code> at startup when those vars are unset (fixes WebKitGTK <code>Gdk Error 71</code> on Wayland sessions).</li>
+<li>Global shortcuts depend on the compositor; <code>Super+Shift+Space</code> avoids conflicts with KDE/GNOME launchers.</li>
+<li>Use the <strong>tray icon</strong> if the shortcut fails to register.</li>
+<li>In-app dialogs replace <code>alert()</code> so WebKitGTK focus is not stolen.</li>
+</ul>
+<hr>
+<h2 id="binary-amp-package">Binary &amp; package</h2><ul>
+<li>Installed binary: <code>gnomad-slate</code> (not <code>tauri-app</code>)</li>
+<li>RPM/DEB include <code>.desktop</code> entry with <code>StartupWMClass=gnomad-slate</code></li>
+</ul>
+<hr>
+<h2 id="tests">Tests</h2><pre><code class="language-bash">npm test
+cd src-tauri &amp;&amp; cargo test
+</code></pre>
+<hr>
+<h2 id="support">Support</h2><p><strong><a href="mailto:david@gnomadstudio.org">david@gnomadstudio.org</a></strong> · <a href="https://gnomadstudio.org">gnomadstudio.org</a></p>
+<p>See also <a href="BUILD_PLATFORMS.md">BUILD_PLATFORMS.md</a> and review artifacts in <code>reviews/</code>.</p>
+
+      <footer class="doc-footer">
+        <p>Built with <span aria-label="love">❤️</span> by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const links = document.querySelectorAll(".sidebar a[href^='#']");
+    const sections = [...links].map((a) => document.querySelector(a.getAttribute("href")));
+    const onScroll = () => {
+      let cur = 0;
+      sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= 120) cur = i; });
+      links.forEach((l, i) => l.classList.toggle("active", i === cur));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>

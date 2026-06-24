@@ -222,23 +222,19 @@ body {
   <div class="layout">
     <nav class="sidebar" aria-label="Table of contents">
           <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
-          <p class="doc-path">docs/STATUS.md</p>
+          <p class="doc-path">docs\STATUS.md</p>
           <a href="#at-a-glance" class="toc-h2">At a glance</a>
-<a href="#current-phase" class="toc-h2">Current phase</a>
-<a href="#what-works-today" class="toc-h3">What works today</a>
-<a href="#not-done-yet-tracked-on-roadmap" class="toc-h3">Not done yet (tracked on roadmap)</a>
-<a href="#health-check-2-june-2026" class="toc-h2">Health check (2 June 2026)</a>
-<a href="#recent-milestones" class="toc-h2">Recent milestones</a>
-<a href="#risks-amp-watch-items" class="toc-h2">Risks &amp; watch items</a>
-<a href="#next-actions-priority-order" class="toc-h2">Next actions (priority order)</a>
-<a href="#for-agents-amp-contributors" class="toc-h2">For agents &amp; contributors</a>
+<a href="#platform-status" class="toc-h2">Platform status</a>
+<a href="#what-works-today" class="toc-h2">What works today</a>
+<a href="#health-check-24-june-2026" class="toc-h2">Health check (24 June 2026)</a>
+<a href="#next-actions" class="toc-h2">Next actions</a>
         </nav>
     <main class="content doc-body">
       <header class="hero">
         <h2>Project Status</h2>
         <p class="formats">Also available: <a href="STATUS.md">Markdown</a> · <a href="STATUS.txt">Plain text</a></p>
       </header>
-      <h1 id="project-status-gnomad-slate">Project Status — Gnomad Slate</h1><p><strong>Version:</strong> 0.1.0<br><strong>Phase:</strong> v0.1.0 shipped — development-ready, pre-distribution<br><strong>Last updated:</strong> 2 June 2026<br><strong>Roadmap:</strong> <a href="ROADMAP.md">ROADMAP.md</a></p>
+      <h1 id="project-status-gnomad-slate">Project Status — Gnomad Slate</h1><p><strong>macOS / Linux:</strong> 2.1.0-beta.4 · <strong>Windows:</strong> 1.0.0-alpha.1<br><strong>Phase:</strong> Beta (mac/linux) · Alpha (Windows) — installers on GitHub Releases + Pages<br><strong>Last updated:</strong> 24 June 2026<br><strong>Roadmap:</strong> <a href="ROADMAP.md">ROADMAP.md</a> · <strong>Platform trees:</strong> <a href="PLATFORM_LAYOUT.md">PLATFORM_LAYOUT.md</a></p>
 <hr>
 <h2 id="at-a-glance">At a glance</h2><table>
 <thead>
@@ -257,81 +253,69 @@ body {
 </tr>
 <tr>
 <td><strong>Repo</strong></td>
-<td><a href="https://github.com/davidthegnomad/gnomad-slate">github.com/davidthegnomad/gnomad-slate</a> (private)</td>
+<td><a href="https://github.com/davidthegnomad/gnomad-slate">github.com/davidthegnomad/gnomad-slate</a></td>
 </tr>
 <tr>
 <td><strong>Default branch</strong></td>
 <td><code>main</code></td>
 </tr>
 <tr>
-<td><strong>Latest commit</strong></td>
-<td><code>00548ae</code> — <em>Harden vault security, add UX polish, and ship full documentation suite</em></td>
-</tr>
-<tr>
-<td><strong>GitHub release</strong></td>
-<td>None yet (local builds only)</td>
+<td><strong>Docs site</strong></td>
+<td><a href="https://davidthegnomad.github.io/gnomad-slate/">davidthegnomad.github.io/gnomad-slate</a></td>
 </tr>
 <tr>
 <td><strong>CI</strong></td>
-<td>Not configured (planned v0.2)</td>
+<td>PR tests + tag releases + GitHub Pages deploy</td>
 </tr>
 <tr>
-<td><strong>Tests</strong></td>
-<td>14 Rust (<code>cargo test</code>) · 4 Vitest (<code>npm test</code>) — passing</td>
+<td><strong>Tests (root)</strong></td>
+<td>14 Rust · 5 Vitest — passing</td>
+</tr>
+<tr>
+<td><strong>Tests (Windows)</strong></td>
+<td>17 Rust · 5 Vitest — passing</td>
 </tr>
 </tbody></table>
 <hr>
-<h2 id="current-phase">Current phase</h2><p><strong>v0.1.0 is feature-complete for internal use.</strong> Security hardening, documentation, and core UX are done. The app is suitable for daily dogfooding on macOS. Distribution (signed installers, CI, tagged releases) is the main gap before calling v0.2 “released.”</p>
-<h3 id="what-works-today">What works today</h3><ul>
-<li><strong>Scratchpad &amp; vault notes</strong> — Markdown buffers; scratchpad auto-archives after 48h; vault notes persist as <code>vault_*.md</code></li>
-<li><strong>Markdown</strong> — Edit / Split / Preview via <code>marked</code></li>
-<li><strong>Vault-X</strong> — Argon2id master password; AES-256-GCM v2; legacy v1 auto-migration on unlock</li>
-<li><strong>Secret handling</strong> — Values live in Rust <code>VaultSession</code> only; UI sees metadata; reveal/copy via IPC; heap zeroized on lock</li>
-<li><strong>Unlock protection</strong> — Rate limit (5 failures → 30s lockout)</li>
-<li><strong>Clipboard</strong> — History (⌘⇧V); Shannon entropy + prefix blocklist; sidebar toggle synced to Rust</li>
-<li><strong>macOS clipboard polling</strong> — <code>NSPasteboard.changeCount</code> with adaptive 1s/3s interval</li>
-<li><strong>Global summon</strong> — Option+Space; command palette; hide on blur</li>
-<li><strong>Data paths</strong> — <code>dirs::data_dir()/gnomad-slate</code> with migration from legacy Antigravity scratch path</li>
-<li><strong>Themes</strong> — Dark, light, system</li>
-</ul>
-<h3 id="not-done-yet-tracked-on-roadmap">Not done yet (tracked on roadmap)</h3><table>
+<h2 id="platform-status">Platform status</h2><table>
 <thead>
 <tr>
-<th>Gap</th>
-<th>Target phase</th>
+<th>Platform</th>
+<th>Code tree</th>
+<th>Version</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody><tr>
-<td>GitHub Actions (test + build on PR)</td>
-<td>v0.2</td>
+<td><strong>macOS</strong></td>
+<td>repository root</td>
+<td>2.1.0-beta.4</td>
+<td>Beta — <code>.dmg</code> / <code>.app.tar.gz</code></td>
 </tr>
 <tr>
-<td>Tagged release + installers</td>
-<td>v0.2</td>
+<td><strong>Linux</strong></td>
+<td>repository root</td>
+<td>2.1.0-beta.4</td>
+<td>Beta — <code>.deb</code> / <code>.rpm</code> / AppImage</td>
 </tr>
 <tr>
-<td>Note rename by filename (orphan fix)</td>
-<td>v0.2</td>
-</tr>
-<tr>
-<td>Bundled Inter fonts (offline)</td>
-<td>v0.2</td>
-</tr>
-<tr>
-<td>Auto-lock on hide, Keychain/Touch ID</td>
-<td>v0.3</td>
-</tr>
-<tr>
-<td>macOS notarization, Windows signing</td>
-<td>v1.0</td>
-</tr>
-<tr>
-<td>Playwright / expanded E2E</td>
-<td>v1.0</td>
+<td><strong>Windows</strong></td>
+<td><code>slate_win64/</code></td>
+<td>1.0.0-alpha.1</td>
+<td>Alpha — <code>.msi</code> / <code>.exe</code></td>
 </tr>
 </tbody></table>
+<p>macOS and Linux share one codebase. Windows is a <strong>separate port</strong> with its own menu, tray, and security hardening pass (see <code>reviews/WINDOWS_CONSOLIDATED_PLAN.md</code>).</p>
 <hr>
-<h2 id="health-check-2-june-2026">Health check (2 June 2026)</h2><table>
+<h2 id="what-works-today">What works today</h2><ul>
+<li><strong>Scratchpad &amp; vault notes</strong> — Markdown buffers; scratchpad auto-archives after 48h</li>
+<li><strong>Vault-X</strong> — Argon2id + AES-256-GCM; secrets stay in Rust; rate-limited unlock</li>
+<li><strong>Clipboard</strong> — History capsule; entropy + prefix filter; sidebar toggle</li>
+<li><strong>Global summon</strong> — Platform-specific shortcut; command palette</li>
+<li><strong>Windows port</strong> — PR1–4 security fixes, Sidebar/EditorWorkstation split, DOMPurify preview</li>
+</ul>
+<hr>
+<h2 id="health-check-24-june-2026">Health check (24 June 2026)</h2><table>
 <thead>
 <tr>
 <th>Check</th>
@@ -339,76 +323,34 @@ body {
 </tr>
 </thead>
 <tbody><tr>
-<td><code>cargo test</code> (src-tauri)</td>
+<td><code>cargo test</code> (root <code>src-tauri</code>)</td>
 <td>✓ 14 passed</td>
 </tr>
 <tr>
-<td><code>npm test</code></td>
-<td>✓ 4 passed</td>
+<td><code>cargo test</code> (<code>slate_win64/src-tauri</code>)</td>
+<td>✓ 17 passed</td>
 </tr>
 <tr>
-<td><code>main</code> pushed to origin</td>
-<td>✓</td>
+<td><code>npm test</code> (both trees)</td>
+<td>✓ 5 passed</td>
 </tr>
 <tr>
-<td>Docs suite (MD + export)</td>
-<td>✓</td>
+<td>GitHub Actions release matrix</td>
+<td>✓ mac / linux / windows</td>
 </tr>
 <tr>
-<td>Production build verified this session</td>
-<td>— run <code>npm run tauri build</code> before release</td>
+<td>GitHub Pages deploy</td>
+<td>✓ <code>docs/</code> on push to <code>main</code></td>
 </tr>
 </tbody></table>
 <hr>
-<h2 id="recent-milestones">Recent milestones</h2><table>
-<thead>
-<tr>
-<th>Date</th>
-<th>Milestone</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>Jun 2026</td>
-<td>Standalone repo + private GitHub remote</td>
-</tr>
-<tr>
-<td>Jun 2026</td>
-<td>Security pass: Argon2id, vault session, path safety, rate limit, zeroization</td>
-</tr>
-<tr>
-<td>Jun 2026</td>
-<td>Clipboard filter + macOS changeCount polling</td>
-</tr>
-<tr>
-<td>Jun 2026</td>
-<td>Full <code>docs/</code> portfolio + <code>npm run docs:export</code></td>
-</tr>
-<tr>
-<td>2 Jun 2026</td>
-<td>Commit <code>00548ae</code> on <code>main</code></td>
-</tr>
-</tbody></table>
-<hr>
-<h2 id="risks-amp-watch-items">Risks &amp; watch items</h2><ul>
-<li><strong>No CI</strong> — Regressions rely on manual <code>cargo test</code> / <code>npm test</code> until v0.2 workflows land.</li>
-<li><strong>macOS-first clipboard</strong> — Windows/Linux use timer polling only; event-driven pasteboard is v0.3.</li>
-<li><strong>Markdown preview</strong> — Uses <code>marked</code> without DOMPurify; acceptable for local trusted notes; harden before v1.0 GA.</li>
-<li><strong>Fonts</strong> — Inter loaded from CDN in dev; bundle locally for offline v0.2.</li>
-</ul>
-<hr>
-<h2 id="next-actions-priority-order">Next actions (priority order)</h2><ol>
-<li>Add <code>.github/workflows</code> — PR gate: Rust tests, Vitest, <code>npm run build</code></li>
-<li>Fix note updates when filename changes (avoid orphan files)</li>
-<li>Cut first tagged release (<code>v0.1.0</code> or <code>v0.2.0</code>) with release runbook</li>
-<li>Bundle Inter fonts in the Tauri asset pipeline</li>
+<h2 id="next-actions">Next actions</h2><ol>
+<li>Cut tagged release <code>v2.1.0-beta.4</code> (CI builds all platforms; Windows ships as <code>1.0.0-alpha.1</code>)</li>
+<li>Smoke-test installers on clean VMs</li>
+<li>Wire Windows menu <code>CheckMenuItem</code> sync for line numbers on startup</li>
+<li>macOS notarization + Windows code signing (v1.0 GA)</li>
 </ol>
-<p>Detail and priorities: <strong><a href="ROADMAP.md">ROADMAP.md</a></strong></p>
-<hr>
-<h2 id="for-agents-amp-contributors">For agents &amp; contributors</h2><ul>
-<li><strong>Session memory:</strong> <a href="../.agents/LOGS/SESSION_STATE.md">.agents/LOGS/SESSION_STATE.md</a> (hot state; update at checkpoint/end)</li>
-<li><strong>Build/test SOP:</strong> <a href="BUILD.md">BUILD.md</a> · <a href="TEST_STRATEGY.md">TEST_STRATEGY.md</a> · <a href="QA_CHECKLIST.md">QA_CHECKLIST.md</a></li>
-<li><strong>Security:</strong> <a href="VAULT_SECURITY.md">VAULT_SECURITY.md</a> · <a href="SECURITY_MODEL.md">SECURITY_MODEL.md</a></li>
-</ul>
+<p>Detail: <strong><a href="ROADMAP.md">ROADMAP.md</a></strong></p>
 <hr>
 <p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
 

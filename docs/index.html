@@ -98,6 +98,48 @@
         color: var(--muted);
       }
       .footer a { color: var(--accent); }
+      .downloads {
+        margin-bottom: 2rem;
+        padding: 1.25rem;
+        background: var(--panel);
+        border: 1px solid rgba(6, 182, 212, 0.35);
+        border-radius: 12px;
+      }
+      .downloads h2 {
+        font-size: 1.125rem;
+        margin-bottom: 0.75rem;
+      }
+      .dl-grid {
+        display: grid;
+        gap: 0.5rem;
+      }
+      a.dl {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      a.dl:hover {
+        border-color: rgba(139, 92, 246, 0.5);
+        background: var(--accent-soft);
+      }
+      a.dl em {
+        font-style: normal;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .dl-note {
+        margin-top: 0.75rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
     </style>
   </head>
   <body>
@@ -109,12 +151,53 @@
         Markdown scratchpad with live preview, clipboard capsule, and Vault-X encrypted secrets —
         documentation in Markdown, HTML, and plain text.
       </p>
-      <p class="version"><strong>Version</strong> 2.1.0-beta.1 · June 2026</p>
+      <p class="version">
+        <strong>macOS / Linux</strong> 2.1.0-beta.4 ·
+        <strong>Windows</strong> 1.0.0-alpha.1 · June 2026
+      </p>
+
+      <section class="downloads" aria-labelledby="downloads-heading">
+        <h2 id="downloads-heading">⬇ Download</h2>
+        <div class="dl-grid">
+          <a class="dl" href="https://github.com/davidthegnomad/gnomad-slate/releases/download/v2.1.0-beta.4/Gnomad-Slate_2.1.0-beta.4_aarch64.dmg">
+            <span><strong>macOS</strong> (Apple Silicon)</span>
+            <em>.dmg · beta.4</em>
+          </a>
+          <a class="dl" href="https://github.com/davidthegnomad/gnomad-slate/releases/download/v2.1.0-beta.4/Gnomad-Slate_2.1.0-beta.4_x64.dmg">
+            <span><strong>macOS</strong> (Intel)</span>
+            <em>.dmg · beta.4</em>
+          </a>
+          <a class="dl" href="https://github.com/davidthegnomad/gnomad-slate/releases/download/v2.1.0-beta.4/Gnomad-Slate_2.1.0-beta.4_amd64.deb">
+            <span><strong>Linux</strong> (Debian/Ubuntu)</span>
+            <em>.deb · beta.4</em>
+          </a>
+          <a class="dl" href="https://github.com/davidthegnomad/gnomad-slate/releases/download/v2.1.0-beta.4/Gnomad-Slate_2.1.0-beta.4_amd64.rpm">
+            <span><strong>Linux</strong> (Fedora/Nobora)</span>
+            <em>.rpm · beta.4</em>
+          </a>
+          <a class="dl" href="https://github.com/davidthegnomad/gnomad-slate/releases/download/v2.1.0-beta.4/Gnomad-Slate_1.0.0-alpha.1_x64-setup.exe">
+            <span><strong>Windows</strong> installer</span>
+            <em>.exe · alpha.1</em>
+          </a>
+          <a class="dl" href="https://github.com/davidthegnomad/gnomad-slate/releases/download/v2.1.0-beta.4/Gnomad-Slate_1.0.0-alpha.1_x64_en-US.msi">
+            <span><strong>Windows</strong> MSI</span>
+            <em>.msi · alpha.1</em>
+          </a>
+        </div>
+        <p class="dl-note">
+          All builds on <a href="https://github.com/davidthegnomad/gnomad-slate/releases/tag/v2.1.0-beta.4">GitHub Releases</a>.
+          Windows builds from the separate <code>slate_win64/</code> tree.
+        </p>
+      </section>
 
       <div class="grid">
         <a class="card highlight" href="STATUS.html">
           <strong>📍 Project status</strong>
-          <span>v2.1.0-beta.1 — macOS Apple Silicon release; Win/Linux next</span>
+          <span>mac/linux beta.4 · Windows alpha.1 — separate code trees</span>
+        </a>
+        <a class="card highlight" href="PLATFORM_LAYOUT.html">
+          <strong>🗂 Platform layout</strong>
+          <span>Root = macOS/Linux · slate_win64/ = Windows only</span>
         </a>
         <a class="card" href="ROADMAP.html">
           <strong>Roadmap</strong>
@@ -130,7 +213,7 @@
         </a>
         <a class="card" href="TEST_STRATEGY.html">
           <strong>Test Strategy</strong>
-          <span>14 Rust + 4 Vitest automated tests</span>
+          <span>14 Rust (root) · 17 Rust (Windows) · 5 Vitest</span>
         </a>
         <a class="card" href="DOCS_INDEX.html">
           <strong>Full documentation index</strong>

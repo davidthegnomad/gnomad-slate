@@ -10,7 +10,8 @@
 | Suite | Command | Count | Scope |
 |-------|---------|-------|--------|
 | **Rust unit** | `cd src-tauri && cargo test` | **14** | Crypto, clipboard filter, filesystem, unlock limiter |
-| **Frontend unit** | `npm test` | **4** | Theme resolution, markdown preview |
+| **Frontend unit** | `npm test` | **5** | Theme resolution, markdown preview |
+| **Rust (Windows tree)** | `cd slate_win64/src-tauri && cargo test` | **17** | Same modules + vault_io tests |
 | **Manual / E2E** | `npm run tauri dev` | — | Full app flows |
 
 ---

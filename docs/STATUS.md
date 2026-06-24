@@ -1,9 +1,9 @@
 # Project Status — Gnomad Slate
 
-**Version:** 2.1.0-beta.1  
-**Phase:** Beta — macOS Apple Silicon released; Windows/Linux alpha next  
-**Last updated:** 9 June 2026  
-**Roadmap:** [ROADMAP.md](ROADMAP.md)
+**macOS / Linux:** 2.1.0-beta.4 · **Windows:** 1.0.0-alpha.1  
+**Phase:** Beta (mac/linux) · Alpha (Windows) — installers on GitHub Releases + Pages  
+**Last updated:** 24 June 2026  
+**Roadmap:** [ROADMAP.md](ROADMAP.md) · **Platform trees:** [PLATFORM_LAYOUT.md](PLATFORM_LAYOUT.md)
 
 ---
 
@@ -13,95 +13,57 @@
 |-------|--------|
 | **Product** | Desktop scratchpad + encrypted secrets vault (Vault-X) |
 | **Stack** | Tauri 2 · React 19 · Vite 7 · Rust (Argon2id, AES-256-GCM) |
-| **Repo** | [github.com/davidthegnomad/gnomad-slate](https://github.com/davidthegnomad/gnomad-slate) (private) |
+| **Repo** | [github.com/davidthegnomad/gnomad-slate](https://github.com/davidthegnomad/gnomad-slate) |
 | **Default branch** | `main` |
-| **Latest commit** | `00548ae` — *Harden vault security, add UX polish, and ship full documentation suite* |
-| **GitHub release** | [v2.1.0-beta.1](https://github.com/davidthegnomad/gnomad-slate/releases/tag/v2.1.0-beta.1) — macOS Apple Silicon |
-| **CI** | Manual release; GitHub Actions planned v0.2 |
-| **Tests** | 14 Rust (`cargo test`) · 4 Vitest (`npm test`) — passing |
+| **Docs site** | [davidthegnomad.github.io/gnomad-slate](https://davidthegnomad.github.io/gnomad-slate/) |
+| **CI** | PR tests + tag releases + GitHub Pages deploy |
+| **Tests (root)** | 14 Rust · 5 Vitest — passing |
+| **Tests (Windows)** | 17 Rust · 5 Vitest — passing |
 
 ---
 
-## Current phase
+## Platform status
 
-**v0.1.0 is feature-complete for internal use.** Security hardening, documentation, and core UX are done. The app is suitable for daily dogfooding on macOS. Distribution (signed installers, CI, tagged releases) is the main gap before calling v0.2 “released.”
+| Platform | Code tree | Version | Status |
+|----------|-----------|---------|--------|
+| **macOS** | repository root | 2.1.0-beta.4 | Beta — `.dmg` / `.app.tar.gz` |
+| **Linux** | repository root | 2.1.0-beta.4 | Beta — `.deb` / `.rpm` / AppImage |
+| **Windows** | `slate_win64/` | 1.0.0-alpha.1 | Alpha — `.msi` / `.exe` |
 
-### What works today
-
-- **Scratchpad & vault notes** — Markdown buffers; scratchpad auto-archives after 48h; vault notes persist as `vault_*.md`
-- **Markdown** — Edit / Split / Preview via `marked`
-- **Vault-X** — Argon2id master password; AES-256-GCM v2; legacy v1 auto-migration on unlock
-- **Secret handling** — Values live in Rust `VaultSession` only; UI sees metadata; reveal/copy via IPC; heap zeroized on lock
-- **Unlock protection** — Rate limit (5 failures → 30s lockout)
-- **Clipboard** — History (⌘⇧V); Shannon entropy + prefix blocklist; sidebar toggle synced to Rust
-- **macOS clipboard polling** — `NSPasteboard.changeCount` with adaptive 1s/3s interval
-- **Global summon** — Option+Space; command palette; hide on blur
-- **Data paths** — `dirs::data_dir()/gnomad-slate` with migration from legacy Antigravity scratch path
-- **Themes** — Dark, light, system
-
-### Not done yet (tracked on roadmap)
-
-| Gap | Target phase |
-|-----|----------------|
-| GitHub Actions (test + build on PR) | v0.2 |
-| Tagged release + installers | v0.2 |
-| Note rename by filename (orphan fix) | v0.2 |
-| Bundled Inter fonts (offline) | v0.2 |
-| Auto-lock on hide, Keychain/Touch ID | v0.3 |
-| macOS notarization, Windows signing | v1.0 |
-| Playwright / expanded E2E | v1.0 |
+macOS and Linux share one codebase. Windows is a **separate port** with its own menu, tray, and security hardening pass (see `reviews/WINDOWS_CONSOLIDATED_PLAN.md`).
 
 ---
 
-## Health check (2 June 2026)
+## What works today
+
+- **Scratchpad & vault notes** — Markdown buffers; scratchpad auto-archives after 48h
+- **Vault-X** — Argon2id + AES-256-GCM; secrets stay in Rust; rate-limited unlock
+- **Clipboard** — History capsule; entropy + prefix filter; sidebar toggle
+- **Global summon** — Platform-specific shortcut; command palette
+- **Windows port** — PR1–4 security fixes, Sidebar/EditorWorkstation split, DOMPurify preview
+
+---
+
+## Health check (24 June 2026)
 
 | Check | Status |
 |-------|--------|
-| `cargo test` (src-tauri) | ✓ 14 passed |
-| `npm test` | ✓ 4 passed |
-| `main` pushed to origin | ✓ |
-| Docs suite (MD + export) | ✓ |
-| Production build verified this session | — run `npm run tauri build` before release |
+| `cargo test` (root `src-tauri`) | ✓ 14 passed |
+| `cargo test` (`slate_win64/src-tauri`) | ✓ 17 passed |
+| `npm test` (both trees) | ✓ 5 passed |
+| GitHub Actions release matrix | ✓ mac / linux / windows |
+| GitHub Pages deploy | ✓ `docs/` on push to `main` |
 
 ---
 
-## Recent milestones
+## Next actions
 
-| Date | Milestone |
-|------|-----------|
-| Jun 2026 | Standalone repo + private GitHub remote |
-| Jun 2026 | Security pass: Argon2id, vault session, path safety, rate limit, zeroization |
-| Jun 2026 | Clipboard filter + macOS changeCount polling |
-| Jun 2026 | Full `docs/` portfolio + `npm run docs:export` |
-| 2 Jun 2026 | Commit `00548ae` on `main` |
+1. Cut tagged release `v2.1.0-beta.4` (CI builds all platforms; Windows ships as `1.0.0-alpha.1`)
+2. Smoke-test installers on clean VMs
+3. Wire Windows menu `CheckMenuItem` sync for line numbers on startup
+4. macOS notarization + Windows code signing (v1.0 GA)
 
----
-
-## Risks & watch items
-
-- **No CI** — Regressions rely on manual `cargo test` / `npm test` until v0.2 workflows land.
-- **macOS-first clipboard** — Windows/Linux use timer polling only; event-driven pasteboard is v0.3.
-- **Markdown preview** — Uses `marked` without DOMPurify; acceptable for local trusted notes; harden before v1.0 GA.
-- **Fonts** — Inter loaded from CDN in dev; bundle locally for offline v0.2.
-
----
-
-## Next actions (priority order)
-
-1. Add `.github/workflows` — PR gate: Rust tests, Vitest, `npm run build`
-2. Fix note updates when filename changes (avoid orphan files)
-3. Cut first tagged release (`v0.1.0` or `v0.2.0`) with release runbook
-4. Bundle Inter fonts in the Tauri asset pipeline
-
-Detail and priorities: **[ROADMAP.md](ROADMAP.md)**
-
----
-
-## For agents & contributors
-
-- **Session memory:** [.agents/LOGS/SESSION_STATE.md](../.agents/LOGS/SESSION_STATE.md) (hot state; update at checkpoint/end)
-- **Build/test SOP:** [BUILD.md](BUILD.md) · [TEST_STRATEGY.md](TEST_STRATEGY.md) · [QA_CHECKLIST.md](QA_CHECKLIST.md)
-- **Security:** [VAULT_SECURITY.md](VAULT_SECURITY.md) · [SECURITY_MODEL.md](SECURITY_MODEL.md)
+Detail: **[ROADMAP.md](ROADMAP.md)**
 
 ---
 

@@ -7,6 +7,7 @@ GNOMAD SLATE
 ============
 
 Version
+Windows
 Stack
 Security
 Tests
@@ -17,7 +18,18 @@ Built with ❤️ by Gnomad Studio 🦙
 
 Repository: github.com/davidthegnomad/gnomad-slate
 
-Status & roadmap: docs/STATUS.md · docs/ROADMAP.md
+Docs site: davidthegnomad.github.io/gnomad-slate · Downloads: Releases
+
+────────────────────────────────────────
+
+PLATFORM LAYOUT
+---------------
+
+  Tree             |  Platforms     |  Version      
+  Repository root  |  macOS, Linux  |  2.1.0-beta.4 
+  slate_win64/     |  Windows only  |  1.0.0-alpha.1
+
+Do not build Windows from the root tree. See docs/PLATFORM_LAYOUT.md.
 
 ────────────────────────────────────────
 
@@ -56,6 +68,15 @@ Prerequisites: Node.js LTS, Rust stable, Tauri v2 prerequisites
     npm run tauri dev      # Desktop + HMR (port 1420)
     npm test               # Vitest (4 tests)
     cd src-tauri && cargo test   # Rust (14 tests)
+
+Windows (separate tree):
+
+  [bash]
+    cd slate_win64
+    npm install
+    npm run tauri dev
+    npm test
+    cd src-tauri && cargo test   # Rust (17 tests)
 
 Production build: npm run tauri build
 
@@ -98,6 +119,7 @@ All docs ship as Markdown, HTML, and TXT. Full index: docs/DOCS_INDEX.md. Regene
   Architecture               |  docs/ARCHITECTURE.md     |  docs/ARCHITECTURE.html   
   Test Strategy              |  docs/TEST_STRATEGY.md    |  docs/TEST_STRATEGY.html  
   Build Platforms            |  docs/BUILD_PLATFORMS.md  |  docs/BUILD_PLATFORMS.html
+  Platform layout            |  docs/PLATFORM_LAYOUT.md  |  —                        
   Changelog                  |  CHANGELOG.md             |  CHANGELOG.html           
 
 ────────────────────────────────────────

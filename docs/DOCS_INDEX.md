@@ -59,6 +59,7 @@ npm run docs:export
 | Document | MD | HTML | TXT |
 |----------|----|------|-----|
 | Build Platforms | [BUILD_PLATFORMS.md](BUILD_PLATFORMS.md) | [BUILD_PLATFORMS.html](BUILD_PLATFORMS.html) | [BUILD_PLATFORMS.txt](BUILD_PLATFORMS.txt) |
+| **Platform layout** (mac/linux vs Windows trees) | [PLATFORM_LAYOUT.md](PLATFORM_LAYOUT.md) | — | — |
 
 ---
 

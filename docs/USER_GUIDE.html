@@ -222,7 +222,7 @@ body {
   <div class="layout">
     <nav class="sidebar" aria-label="Table of contents">
           <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
-          <p class="doc-path">docs/USER_GUIDE.md</p>
+          <p class="doc-path">docs\USER_GUIDE.md</p>
           <a href="#introduction" class="toc-h2">Introduction</a>
 <a href="#installation" class="toc-h2">Installation</a>
 <a href="#from-source-developers" class="toc-h3">From source (developers)</a>
@@ -257,7 +257,32 @@ body {
 npm install
 npm run tauri dev
 </code></pre>
-<h3 id="installers">Installers</h3><p>When GitHub Releases are published, download <code>.dmg</code> (macOS), <code>.msi</code> / <code>.exe</code> (Windows), or <code>.deb</code> / AppImage (Linux). See <a href="BUILD_PLATFORMS.md">BUILD_PLATFORMS.md</a>.</p>
+<h3 id="installers">Installers</h3><p>Download from <strong><a href="https://davidthegnomad.github.io/gnomad-slate/">GitHub Pages</a></strong> or <a href="https://github.com/davidthegnomad/gnomad-slate/releases">GitHub Releases</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Version</th>
+<th>Artifacts</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>macOS</td>
+<td>2.1.0-beta.4</td>
+<td><code>.dmg</code>, <code>.app.tar.gz</code></td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>2.1.0-beta.4</td>
+<td><code>.deb</code>, <code>.rpm</code>, AppImage</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>1.0.0-alpha.1</td>
+<td><code>.msi</code>, <code>.exe</code> (built from <code>slate_win64/</code>)</td>
+</tr>
+</tbody></table>
+<p>See <a href="BUILD_PLATFORMS.md">BUILD_PLATFORMS.md</a> and <a href="PLATFORM_LAYOUT.md">PLATFORM_LAYOUT.md</a>.</p>
 <hr>
 <h2 id="main-interface">Main interface</h2><pre><code>┌─────────────────────────────────────────────────────────────┐
 │  Sidebar — search, tabs, notes, settings, themes            │
@@ -326,6 +351,7 @@ npm run tauri dev
 <td>Close palette or clipboard modal</td>
 </tr>
 </tbody></table>
+<p>Slate <strong>hides when you focus another app</strong>. Bring it back with <strong>Option+Space</strong> or by <strong>clicking the Dock icon</strong>.</p>
 <p>Command palette actions include JSON format, markdown cleanup, daily note helpers, and theme switching.</p>
 <hr>
 <h2 id="clipboard-capsule">Clipboard capsule</h2><ol>

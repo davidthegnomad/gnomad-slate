@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   TECHNOLOGY STACK
-  Gnomad Slate · docs/TECH_STACK.md
+  Gnomad Slate · docs\TECH_STACK.md
 ════════════════════════════════════════════════════════════════════════
 
 TECHNOLOGY STACK — GNOMAD SLATE

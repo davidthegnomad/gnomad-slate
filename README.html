@@ -223,7 +223,8 @@ body {
     <nav class="sidebar" aria-label="Table of contents">
           <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
           <p class="doc-path">README.md</p>
-          <a href="#why-this-exists" class="toc-h2">Why this exists</a>
+          <a href="#platform-layout" class="toc-h2">Platform layout</a>
+<a href="#why-this-exists" class="toc-h2">Why this exists</a>
 <a href="#capabilities-v010" class="toc-h2">Capabilities (v0.1.0)</a>
 <a href="#quick-start" class="toc-h2">Quick start</a>
 <a href="#developers" class="toc-h3">Developers</a>
@@ -238,14 +239,36 @@ body {
         <h2>Gnomad Slate</h2>
         <p class="formats">Also available: <a href="README.md">Markdown</a> · <a href="README.txt">Plain text</a></p>
       </header>
-      <h1 id="gnomad-slate">Gnomad Slate</h1><p><a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.1.0-06b6d4" alt="Version"></a>
+      <h1 id="gnomad-slate">Gnomad Slate</h1><p><a href="CHANGELOG.md"><img src="https://img.shields.io/badge/mac%2Flinux-2.1.0--beta.4-06b6d4" alt="Version"></a>
+<a href="slate_win64/"><img src="https://img.shields.io/badge/windows-1.0.0--alpha.1-8b5cf6" alt="Windows"></a>
 <a href="docs/TECH_STACK.md"><img src="https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%2019-8b5cf6" alt="Stack"></a>
 <a href="docs/VAULT_SECURITY.md"><img src="https://img.shields.io/badge/vault-AES--256--GCM%20%2B%20Argon2id-333" alt="Security"></a>
-<a href="docs/TEST_STRATEGY.md"><img src="https://img.shields.io/badge/tests-14%20Rust%20%2B%204%20Vitest-333" alt="Tests"></a></p>
+<a href="docs/TEST_STRATEGY.md"><img src="https://img.shields.io/badge/tests-14%20Rust%20%2B%205%20Vitest-333" alt="Tests"></a></p>
 <p><strong>Gnomad Slate</strong> is a desktop scratchpad and encrypted secrets vault — quick markdown capture with live preview, clipboard history, and <strong>Vault-X</strong> for API keys and tokens. Summon with <strong>Option+Space</strong> from anywhere.</p>
 <p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
 <p><strong>Repository:</strong> <a href="https://github.com/davidthegnomad/gnomad-slate">github.com/davidthegnomad/gnomad-slate</a></p>
-<p><strong>Status &amp; roadmap:</strong> <a href="docs/STATUS.md"><code>docs/STATUS.md</code></a> · <a href="docs/ROADMAP.md"><code>docs/ROADMAP.md</code></a></p>
+<p><strong>Docs site:</strong> <a href="https://davidthegnomad.github.io/gnomad-slate/"><code>davidthegnomad.github.io/gnomad-slate</code></a> · <strong>Downloads:</strong> <a href="https://github.com/davidthegnomad/gnomad-slate/releases">Releases</a></p>
+<hr>
+<h2 id="platform-layout">Platform layout</h2><table>
+<thead>
+<tr>
+<th>Tree</th>
+<th>Platforms</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Repository root</strong></td>
+<td>macOS, Linux</td>
+<td><code>2.1.0-beta.4</code></td>
+</tr>
+<tr>
+<td><strong><code>slate_win64/</code></strong></td>
+<td>Windows only</td>
+<td><code>1.0.0-alpha.1</code></td>
+</tr>
+</tbody></table>
+<p>Do not build Windows from the root tree. See <a href="docs/PLATFORM_LAYOUT.md"><code>docs/PLATFORM_LAYOUT.md</code></a>.</p>
 <hr>
 <h2 id="why-this-exists">Why this exists</h2><p>You need a place to drop thoughts, snippets, and credentials without opening a browser or leaving secrets in plain notes. Slate stays ready in the background: scratchpad notes with markdown preview, persistent vault notes, filtered clipboard history, and a <strong>Rust-backed</strong> encrypted secret store the UI never holds in full.</p>
 <hr>
@@ -296,6 +319,13 @@ npm install
 npm run tauri dev      # Desktop + HMR (port 1420)
 npm test               # Vitest (4 tests)
 cd src-tauri &amp;&amp; cargo test   # Rust (14 tests)
+</code></pre>
+<p><strong>Windows (separate tree):</strong></p>
+<pre><code class="language-bash">cd slate_win64
+npm install
+npm run tauri dev
+npm test
+cd src-tauri &amp;&amp; cargo test   # Rust (17 tests)
 </code></pre>
 <p><strong>Production build:</strong> <code>npm run tauri build</code></p>
 <h3 id="users">Users</h3><p>See <a href="docs/USER_GUIDE.md"><code>docs/USER_GUIDE.md</code></a> · <a href="docs/USER_GUIDE.html">HTML</a> · <a href="docs/USER_GUIDE.txt">TXT</a></p>
@@ -364,6 +394,11 @@ cd src-tauri &amp;&amp; cargo test   # Rust (14 tests)
 <td>Build Platforms</td>
 <td><a href="docs/BUILD_PLATFORMS.md">docs/BUILD_PLATFORMS.md</a></td>
 <td><a href="docs/BUILD_PLATFORMS.html">docs/BUILD_PLATFORMS.html</a></td>
+</tr>
+<tr>
+<td><strong>Platform layout</strong></td>
+<td><a href="docs/PLATFORM_LAYOUT.md">docs/PLATFORM_LAYOUT.md</a></td>
+<td>—</td>
 </tr>
 <tr>
 <td>Changelog</td>

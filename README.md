@@ -1,9 +1,10 @@
 # Gnomad Slate
 
-[![Version](https://img.shields.io/badge/version-2.1.0--beta.1-06b6d4)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/mac%2Flinux-2.1.0--beta.4-06b6d4)](CHANGELOG.md)
+[![Windows](https://img.shields.io/badge/windows-1.0.0--alpha.1-8b5cf6)](slate_win64/)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%2019-8b5cf6)](docs/TECH_STACK.md)
 [![Security](https://img.shields.io/badge/vault-AES--256--GCM%20%2B%20Argon2id-333)](docs/VAULT_SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-14%20Rust%20%2B%204%20Vitest-333)](docs/TEST_STRATEGY.md)
+[![Tests](https://img.shields.io/badge/tests-14%20Rust%20%2B%205%20Vitest-333)](docs/TEST_STRATEGY.md)
 
 **Gnomad Slate** is a desktop scratchpad and encrypted secrets vault — quick markdown capture with live preview, clipboard history, and **Vault-X** for API keys and tokens. Summon with **Option+Space** from anywhere.
 
@@ -11,7 +12,18 @@ Built with ❤️ by [Gnomad Studio](https://gnomadstudio.org) 🦙
 
 **Repository:** [github.com/davidthegnomad/gnomad-slate](https://github.com/davidthegnomad/gnomad-slate)
 
-**Status & roadmap:** [`docs/STATUS.md`](docs/STATUS.md) · [`docs/ROADMAP.md`](docs/ROADMAP.md)
+**Docs site:** [`davidthegnomad.github.io/gnomad-slate`](https://davidthegnomad.github.io/gnomad-slate/) · **Downloads:** [Releases](https://github.com/davidthegnomad/gnomad-slate/releases)
+
+---
+
+## Platform layout
+
+| Tree | Platforms | Version |
+|------|-----------|---------|
+| **Repository root** | macOS, Linux | `2.1.0-beta.4` |
+| **`slate_win64/`** | Windows only | `1.0.0-alpha.1` |
+
+Do not build Windows from the root tree. See [`docs/PLATFORM_LAYOUT.md`](docs/PLATFORM_LAYOUT.md).
 
 ---
 
@@ -48,6 +60,16 @@ npm install
 npm run tauri dev      # Desktop + HMR (port 1420)
 npm test               # Vitest (4 tests)
 cd src-tauri && cargo test   # Rust (14 tests)
+```
+
+**Windows (separate tree):**
+
+```bash
+cd slate_win64
+npm install
+npm run tauri dev
+npm test
+cd src-tauri && cargo test   # Rust (17 tests)
 ```
 
 **Production build:** `npm run tauri build`
@@ -91,6 +113,7 @@ All docs ship as **Markdown**, **HTML**, and **TXT**. Full index: [`docs/DOCS_IN
 | Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | [docs/ARCHITECTURE.html](docs/ARCHITECTURE.html) |
 | Test Strategy | [docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md) | [docs/TEST_STRATEGY.html](docs/TEST_STRATEGY.html) |
 | Build Platforms | [docs/BUILD_PLATFORMS.md](docs/BUILD_PLATFORMS.md) | [docs/BUILD_PLATFORMS.html](docs/BUILD_PLATFORMS.html) |
+| **Platform layout** | [docs/PLATFORM_LAYOUT.md](docs/PLATFORM_LAYOUT.md) | — |
 | Changelog | [CHANGELOG.md](CHANGELOG.md) | [CHANGELOG.html](CHANGELOG.html) |
 
 ---

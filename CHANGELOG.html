@@ -223,7 +223,19 @@ body {
     <nav class="sidebar" aria-label="Table of contents">
           <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
           <p class="doc-path">CHANGELOG.md</p>
-          <a href="#010-june-2026" class="toc-h2">[0.1.0] — June 2026</a>
+          <a href="#100-alpha1-windows-june-2026" class="toc-h2">[1.0.0-alpha.1] — Windows — June 2026</a>
+<a href="#added-windows-port-slate_win64" class="toc-h3">Added — Windows port (slate_win64/)</a>
+<a href="#release" class="toc-h3">Release</a>
+<a href="#210-beta4-june-2026" class="toc-h2">[2.1.0-beta.4] — June 2026</a>
+<a href="#fixed" class="toc-h3">Fixed</a>
+<a href="#210-beta3-june-2026" class="toc-h2">[2.1.0-beta.3] — June 2026</a>
+<a href="#added-linux-desktop-alpha" class="toc-h3">Added — Linux desktop (alpha)</a>
+<a href="#fixed" class="toc-h3">Fixed</a>
+<a href="#release" class="toc-h3">Release</a>
+<a href="#210-beta1-june-2026" class="toc-h2">[2.1.0-beta.1] — June 2026</a>
+<a href="#added" class="toc-h3">Added</a>
+<a href="#release" class="toc-h3">Release</a>
+<a href="#010-june-2026" class="toc-h2">[0.1.0] — June 2026</a>
 <a href="#added" class="toc-h3">Added</a>
 <a href="#security" class="toc-h3">Security</a>
 <a href="#testing" class="toc-h3">Testing</a>
@@ -235,6 +247,47 @@ body {
         <p class="formats">Also available: <a href="CHANGELOG.md">Markdown</a> · <a href="CHANGELOG.txt">Plain text</a></p>
       </header>
       <h1 id="changelog-gnomad-slate">Changelog — Gnomad Slate</h1><p>All notable changes to this project are documented here.</p>
+<hr>
+<h2 id="100-alpha1-windows-june-2026">[1.0.0-alpha.1] — Windows — June 2026</h2><h3 id="added-windows-port-slate_win64">Added — Windows port (<code>slate_win64/</code>)</h3><ul>
+<li>Separate Windows codebase: native menu, system tray, <code>Alt+Space</code> summon, WebView2 bootstrap</li>
+<li>Security P0: atomic vault writes, clipboard clear race fix, path validation, DOMPurify, CSP, async unlock</li>
+<li>Frontend extractions: <code>Sidebar</code>, <code>EditorWorkstation</code>, palette command IDs</li>
+<li><strong>17</strong> Rust unit tests in <code>slate_win64/src-tauri</code></li>
+</ul>
+<h3 id="release">Release</h3><ul>
+<li>Windows <code>.msi</code> / <code>.exe</code> via CI (<code>slate_win64</code> tree) · alpha channel</li>
+</ul>
+<hr>
+<h2 id="210-beta4-june-2026">[2.1.0-beta.4] — June 2026</h2><h3 id="fixed">Fixed</h3><ul>
+<li><strong>Linux menu launch crash</strong> — set <code>GDK_BACKEND=x11</code> and <code>WEBKIT_DISABLE_DMABUF_RENDERER=1</code> at startup when unset, fixing WebKitGTK <code>Gdk Error 71</code> on Wayland sessions (app menu / <code>.desktop</code> launches)</li>
+</ul>
+<hr>
+<h2 id="210-beta3-june-2026">[2.1.0-beta.3] — June 2026</h2><h3 id="added-linux-desktop-alpha">Added — Linux desktop (alpha)</h3><ul>
+<li>Platform-split menus (<code>menu/linux.rs</code>, <code>menu/macos.rs</code>), system tray, <code>Super+Shift+Space</code> summon shortcut</li>
+<li>Linux UI: filename on own row, line numbers toggle, in-app dialogs (no <code>alert()</code>), detailed Help (F1) with support contact</li>
+<li>Packaging: <code>gnomad-slate</code> binary, Fedora/Nobara RPM and DEB with <code>.desktop</code> entry, libsoup3 deps</li>
+<li>Settings persistence via <code>tauri-plugin-store</code>; strict CSP; structured <code>tracing</code> logs</li>
+<li><strong>File → Close</strong> (<code>Ctrl+W</code>) and <strong>File → Quit</strong> (<code>Ctrl+Q</code>) with vault-aware <code>confirm_quit</code> lifecycle</li>
+</ul>
+<h3 id="fixed">Fixed</h3><ul>
+<li>Unified quit flow (<code>confirm_quit</code>) — no zombie process when global shortcut plugin keeps event loop alive</li>
+<li>Linux close path uses runtime <code>isLinuxDesktop()</code> so quit works even if <code>plugin-os</code> loads after mount</li>
+<li>Version display on Linux matches <code>package.json</code> / <code>Cargo.toml</code> semver</li>
+</ul>
+<h3 id="release">Release</h3><ul>
+<li>GitHub Release <code>v2.1.0-beta.3</code> with Linux <code>.rpm</code> and <code>.deb</code> (Nobara/Fedora); macOS/Windows matrix builds</li>
+<li>Session log: <a href="docs/LINUX_SESSION_2026-06-23.md">docs/LINUX_SESSION_2026-06-23.md</a></li>
+</ul>
+<hr>
+<h2 id="210-beta1-june-2026">[2.1.0-beta.1] — June 2026</h2><h3 id="added">Added</h3><ul>
+<li>About menu with version info and Check for Updates (Tauri updater)</li>
+<li>Custom app icon and refreshed window sizing</li>
+<li>Cmd+S / Cmd+N shortcuts; platform-aware beta labels</li>
+</ul>
+<h3 id="release">Release</h3><ul>
+<li>GitHub Release <code>v2.1.0-beta.1</code> with macOS Apple Silicon artifacts (<code>.app.tar.gz</code>, <code>.zip</code>)</li>
+<li>Marketing and downloads on <a href="https://davidcole.cloud/apps/slate">davidcole.cloud/apps/slate</a></li>
+</ul>
 <hr>
 <h2 id="010-june-2026">[0.1.0] — June 2026</h2><h3 id="added">Added</h3><ul>
 <li>Tauri 2 desktop scratchpad with React 19 + Vite 7 frontend</li>

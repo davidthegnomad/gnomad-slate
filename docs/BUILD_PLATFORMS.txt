@@ -1,24 +1,43 @@
 ════════════════════════════════════════════════════════════════════════
   BUILDING GNOMAD SLATE FOR MACOS, LINUX, AND WINDOWS
-  Gnomad Slate · docs/BUILD_PLATFORMS.md
+  Gnomad Slate · docs\BUILD_PLATFORMS.md
 ════════════════════════════════════════════════════════════════════════
 
 BUILDING GNOMAD SLATE FOR MACOS, LINUX, AND WINDOWS
 ===================================================
 
-Version: 0.1.0
+Last updated: June 2026
+
+────────────────────────────────────────
+
+PLATFORM TREES (READ FIRST)
+---------------------------
+
+macOS and Linux build from the repository root. Windows builds from slate_win64/ only.
+
+See PLATFORM_LAYOUT.md for the full map and merge policy.
+
+  Tree          |  OS            |  Version      
+  / (root)      |  macOS, Linux  |  2.1.0-beta.4 
+  slate_win64/  |  Windows       |  1.0.0-alpha.1
 
 ────────────────────────────────────────
 
 PREREQUISITES
 -------------
 
-  • Node.js LTS
+  • Node.js LTS (22 recommended)
   • Rust stable (rustup)
-  • Tauri v2 prerequisites for your OS
+  • Tauri v2 prerequisites
+  • Windows: Visual Studio Build Tools (MSVC) + WebView2
 
   [bash]
-    cd 05_apps_and_extensions/gnomad-slate
+    cd gnomad-slate          # macOS / Linux
+    npm install
+    npm run build
+
+  [powershell]
+    cd slate_win64           # Windows only
     npm install
     npm run build
 
@@ -27,19 +46,20 @@ PREREQUISITES
 DEVELOPMENT
 -----------
 
+macOS / Linux (root)
+
   [bash]
-    # Desktop (Vite on :1420 + Tauri shell)
-    npm run tauri dev
-    
-    # Frontend only
-    npm run dev
-    
-    # Tests
-    npm test                    # Vitest (4 tests)
-    cd src-tauri && cargo test  # Rust (14 tests)
-    
-    # Regenerate docs HTML/TXT
-    npm run docs:export
+    npm run tauri:dev        # Wayland default on Linux
+    npm run tauri:dev:x11    # Linux WebKit/GPU fallback (X11)
+    npm test
+    cd src-tauri && cargo test   # 14 Rust tests
+
+Windows (slate_win64)
+
+  [powershell]
+    npm run tauri:dev
+    npm test
+    cd src-tauri; cargo test     # 17 Rust tests
 
 ────────────────────────────────────────
 
@@ -47,23 +67,68 @@ PRODUCTION BUILD
 ----------------
 
   [bash]
-    npm run tauri build
+    # macOS / Linux
+    npm run tauri:build
+    
+    # Windows (separate tree)
+    cd slate_win64 && npm run tauri:build
 
-Artifacts under src-tauri/target/release/bundle/:
-
-  Platform  |  Output              
-  macOS     |  .app, .dmg          
-  Windows   |  .msi, .exe          
-  Linux     |  .deb, .rpm, AppImage
-
-Build on the target OS for reliable results. macOS builds link objc2-app-kit for pasteboard changeCount.
+  Platform  |  Tree         |  Artifacts              
+  macOS     |  root         |  .app, .dmg, .app.tar.gz
+  Linux     |  root         |  .deb, .rpm, AppImage   
+  Windows   |  slate_win64  |  .msi, .exe (NSIS)      
 
 ────────────────────────────────────────
 
-REPOSITORY
-----------
+DOWNLOADS
+---------
 
-GitHub: github.com/davidthegnomad/gnomad-slate (private)
+Pre-built installers: GitHub Releases · GitHub Pages landing
+
+CI publishes all platforms on v* tags via .github/workflows/release.yml.
+
+────────────────────────────────────────
+
+PLATFORM NOTES
+--------------
+
+Summon shortcut
+
+  OS       |  Shortcut         
+  macOS    |  Option+Space     
+  Windows  |  Alt+Space        
+  Linux    |  Super+Shift+Space
+
+Linux dependencies
+
+  [bash]
+    bash scripts/install-linux-deps.sh
+
+Requires webkit2gtk 4.1 and libsoup3 dev headers (Tauri 2). See LINUX_DESKTOP.md.
+
+macOS
+
+  • Hide-on-blur when losing focus (launcher behavior)
+  • Pasteboard changeCount reduces idle clipboard polling
+
+Windows
+
+  • Separate codebase under slate_win64/ (alpha 1.0.0-alpha.1)
+  • WebView2 Evergreen bootstrapper in slate_win64/src-tauri/tauri.conf.json
+  • Window stays visible when clicking away (no hide-on-blur)
+
+────────────────────────────────────────
+
+CI
+--
+
+  • PR/push: .github/workflows/build-test.yml (root tree)
+  • *Tags v:** .github/workflows/release.yml (macOS arm64 + x86_64, Linux, Windows from slate_win64)
+  • Docs site: .github/workflows/pages.yml → GitHub Pages (docs/)
+
+Releases publish as pre-releases until marked stable.
+
+See RELEASE_RUNBOOK.md and CROSS_PLATFORM_CODE_REVIEW.md.
 
 ────────────────────────────────────────
 

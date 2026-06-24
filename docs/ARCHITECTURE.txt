@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   ARCHITECTURE
-  Gnomad Slate · docs/ARCHITECTURE.md
+  Gnomad Slate · docs\ARCHITECTURE.md
 ════════════════════════════════════════════════════════════════════════
 
 ARCHITECTURE — GNOMAD SLATE

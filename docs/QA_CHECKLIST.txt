@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   QA CHECKLIST
-  Gnomad Slate · docs/QA_CHECKLIST.md
+  Gnomad Slate · docs\QA_CHECKLIST.md
 ════════════════════════════════════════════════════════════════════════
 
 QA CHECKLIST — GNOMAD SLATE

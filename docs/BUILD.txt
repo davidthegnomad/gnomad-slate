@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   BUILD NARRATIVE
-  Gnomad Slate · docs/BUILD.md
+  Gnomad Slate · docs\BUILD.md
 ════════════════════════════════════════════════════════════════════════
 
 BUILD NARRATIVE — GNOMAD SLATE

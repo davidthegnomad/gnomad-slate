@@ -222,7 +222,7 @@ body {
   <div class="layout">
     <nav class="sidebar" aria-label="Table of contents">
           <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
-          <p class="doc-path">docs/CROSS_PLATFORM_CHECKLIST.md</p>
+          <p class="doc-path">docs\CROSS_PLATFORM_CHECKLIST.md</p>
           <a href="#all-platforms" class="toc-h2">All platforms</a>
 <a href="#macos-primary-dev" class="toc-h2">macOS (primary dev)</a>
 <a href="#windows" class="toc-h2">Windows</a>
@@ -247,7 +247,7 @@ body {
 <h2 id="macos-primary-dev">macOS (primary dev)</h2><ul>
 <li><input disabled="" type="checkbox"> <code>npm run tauri dev</code> — hot reload</li>
 <li><input disabled="" type="checkbox"> <code>npm run tauri build</code> — <code>.app</code> + <code>.dmg</code></li>
-<li><input disabled="" type="checkbox"> Option+Space shortcut</li>
+<li><input disabled="" type="checkbox"> Global shortcut: <strong>Option+Space</strong> (macOS) / <strong>Alt+Space</strong> (Windows/Linux)</li>
 <li><input disabled="" type="checkbox"> Pasteboard <code>changeCount</code> skips idle reads (lower CPU when unchanged)</li>
 <li><input disabled="" type="checkbox"> App data: <code>~/Library/Application Support/gnomad-slate/</code></li>
 <li><input disabled="" type="checkbox"> Legacy migration from <code>~/.gemini/.../slate_data</code> if present</li>
@@ -255,7 +255,8 @@ body {
 <hr>
 <h2 id="windows">Windows</h2><ul>
 <li><input disabled="" type="checkbox"> Build on Windows VM or runner</li>
-<li><input disabled="" type="checkbox"> Global shortcut (Alt+Space fallback)</li>
+<li><input disabled="" type="checkbox"> Global shortcut <strong>Alt+Space</strong> (not Option+Space)</li>
+<li><input disabled="" type="checkbox"> Window does <strong>not</strong> hide on blur (macOS-only behavior)</li>
 <li><input disabled="" type="checkbox"> App data: <code>%APPDATA%\gnomad-slate\</code></li>
 <li><input disabled="" type="checkbox"> WebView2 installed</li>
 <li><input disabled="" type="checkbox"> Adaptive clipboard polling (no changeCount — 1s/3s backoff)</li>

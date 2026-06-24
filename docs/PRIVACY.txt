@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   PRIVACY
-  Gnomad Slate · docs/PRIVACY.md
+  Gnomad Slate · docs\PRIVACY.md
 ════════════════════════════════════════════════════════════════════════
 
 PRIVACY — GNOMAD SLATE

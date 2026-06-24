@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   DOCUMENTATION INDEX (ALL FORMATS)
-  Gnomad Slate · docs/DOCS_INDEX.md
+  Gnomad Slate · docs\DOCS_INDEX.md
 ════════════════════════════════════════════════════════════════════════
 
 DOCUMENTATION INDEX (ALL FORMATS) — GNOMAD SLATE
@@ -48,6 +48,8 @@ ENGINEERING & PORTFOLIO
   Roadmap                             |  ROADMAP.md                   |  ROADMAP.html                   |  ROADMAP.txt                 
   Release runbook                     |  RELEASE_RUNBOOK.md           |  RELEASE_RUNBOOK.html           |  RELEASE_RUNBOOK.txt         
   Troubleshooting                     |  TROUBLESHOOTING.md           |  TROUBLESHOOTING.html           |  TROUBLESHOOTING.txt         
+  Linux desktop                       |  LINUX_DESKTOP.md             |  —                              |  —                           
+  Linux session log (2026-06-23)      |  LINUX_SESSION_2026-06-23.md  |  —                              |  —                           
   Accessibility                       |  ACCESSIBILITY.md             |  ACCESSIBILITY.html             |  ACCESSIBILITY.txt           
   Test strategy (14 Rust + 4 Vitest)  |  TEST_STRATEGY.md             |  TEST_STRATEGY.html             |  TEST_STRATEGY.txt           
   Demo Script                         |  DEMO_SCRIPT.md               |  DEMO_SCRIPT.html               |  DEMO_SCRIPT.txt             
@@ -59,8 +61,9 @@ ENGINEERING & PORTFOLIO
 BUILD & PLATFORM
 ----------------
 
-  Document         |  MD                  |  HTML                  |  TXT                
-  Build Platforms  |  BUILD_PLATFORMS.md  |  BUILD_PLATFORMS.html  |  BUILD_PLATFORMS.txt
+  Document                                      |  MD                  |  HTML                  |  TXT                
+  Build Platforms                               |  BUILD_PLATFORMS.md  |  BUILD_PLATFORMS.html  |  BUILD_PLATFORMS.txt
+  Platform layout (mac/linux vs Windows trees)  |  PLATFORM_LAYOUT.md  |  —                     |  —                  
 
 ────────────────────────────────────────
 

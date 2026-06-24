@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   UI DESIGN
-  Gnomad Slate · docs/UI_DESIGN.md
+  Gnomad Slate · docs\UI_DESIGN.md
 ════════════════════════════════════════════════════════════════════════
 
 UI DESIGN — GNOMAD SLATE

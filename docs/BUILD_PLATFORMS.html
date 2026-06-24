@@ -222,69 +222,149 @@ body {
   <div class="layout">
     <nav class="sidebar" aria-label="Table of contents">
           <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
-          <p class="doc-path">docs/BUILD_PLATFORMS.md</p>
-          <a href="#prerequisites" class="toc-h2">Prerequisites</a>
+          <p class="doc-path">docs\BUILD_PLATFORMS.md</p>
+          <a href="#platform-trees-read-first" class="toc-h2">Platform trees (read first)</a>
+<a href="#prerequisites" class="toc-h2">Prerequisites</a>
 <a href="#development" class="toc-h2">Development</a>
+<a href="#macos-linux-root" class="toc-h3">macOS / Linux (root)</a>
+<a href="#windows-slate_win64" class="toc-h3">Windows (slate_win64)</a>
 <a href="#production-build" class="toc-h2">Production build</a>
-<a href="#repository" class="toc-h2">Repository</a>
+<a href="#downloads" class="toc-h2">Downloads</a>
+<a href="#platform-notes" class="toc-h2">Platform notes</a>
+<a href="#summon-shortcut" class="toc-h3">Summon shortcut</a>
+<a href="#linux-dependencies" class="toc-h3">Linux dependencies</a>
+<a href="#macos" class="toc-h3">macOS</a>
+<a href="#windows" class="toc-h3">Windows</a>
+<a href="#ci" class="toc-h2">CI</a>
         </nav>
     <main class="content doc-body">
       <header class="hero">
         <h2>Building Gnomad Slate for macOS, Linux, and Windows</h2>
         <p class="formats">Also available: <a href="BUILD_PLATFORMS.md">Markdown</a> · <a href="BUILD_PLATFORMS.txt">Plain text</a></p>
       </header>
-      <h1 id="building-gnomad-slate-for-macos-linux-and-windows">Building Gnomad Slate for macOS, Linux, and Windows</h1><p><strong>Version:</strong> 0.1.0</p>
+      <h1 id="building-gnomad-slate-for-macos-linux-and-windows">Building Gnomad Slate for macOS, Linux, and Windows</h1><p><strong>Last updated:</strong> June 2026</p>
+<hr>
+<h2 id="platform-trees-read-first">Platform trees (read first)</h2><p>macOS and Linux build from the <strong>repository root</strong>. Windows builds from <strong><code>slate_win64/</code></strong> only.</p>
+<p>See <a href="PLATFORM_LAYOUT.md">PLATFORM_LAYOUT.md</a> for the full map and merge policy.</p>
+<table>
+<thead>
+<tr>
+<th>Tree</th>
+<th>OS</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>/</code> (root)</td>
+<td>macOS, Linux</td>
+<td><code>2.1.0-beta.4</code></td>
+</tr>
+<tr>
+<td><code>slate_win64/</code></td>
+<td>Windows</td>
+<td><code>1.0.0-alpha.1</code></td>
+</tr>
+</tbody></table>
 <hr>
 <h2 id="prerequisites">Prerequisites</h2><ul>
-<li>Node.js LTS</li>
+<li>Node.js LTS (22 recommended)</li>
 <li>Rust stable (<code>rustup</code>)</li>
-<li><a href="https://v2.tauri.app/start/prerequisites/">Tauri v2 prerequisites</a> for your OS</li>
+<li><a href="https://v2.tauri.app/start/prerequisites/">Tauri v2 prerequisites</a></li>
+<li><strong>Windows:</strong> Visual Studio Build Tools (MSVC) + WebView2</li>
 </ul>
-<pre><code class="language-bash">cd 05_apps_and_extensions/gnomad-slate
+<pre><code class="language-bash">cd gnomad-slate          # macOS / Linux
+npm install
+npm run build
+</code></pre>
+<pre><code class="language-powershell">cd slate_win64           # Windows only
 npm install
 npm run build
 </code></pre>
 <hr>
-<h2 id="development">Development</h2><pre><code class="language-bash"># Desktop (Vite on :1420 + Tauri shell)
-npm run tauri dev
-
-# Frontend only
-npm run dev
-
-# Tests
-npm test                    # Vitest (4 tests)
-cd src-tauri &amp;&amp; cargo test  # Rust (14 tests)
-
-# Regenerate docs HTML/TXT
-npm run docs:export
+<h2 id="development">Development</h2><h3 id="macos-linux-root">macOS / Linux (root)</h3><pre><code class="language-bash">npm run tauri:dev        # Wayland default on Linux
+npm run tauri:dev:x11    # Linux WebKit/GPU fallback (X11)
+npm test
+cd src-tauri &amp;&amp; cargo test   # 14 Rust tests
+</code></pre>
+<h3 id="windows-slate_win64">Windows (<code>slate_win64</code>)</h3><pre><code class="language-powershell">npm run tauri:dev
+npm test
+cd src-tauri; cargo test     # 17 Rust tests
 </code></pre>
 <hr>
-<h2 id="production-build">Production build</h2><pre><code class="language-bash">npm run tauri build
+<h2 id="production-build">Production build</h2><pre><code class="language-bash"># macOS / Linux
+npm run tauri:build
+
+# Windows (separate tree)
+cd slate_win64 &amp;&amp; npm run tauri:build
 </code></pre>
-<p>Artifacts under <code>src-tauri/target/release/bundle/</code>:</p>
 <table>
 <thead>
 <tr>
 <th>Platform</th>
-<th>Output</th>
+<th>Tree</th>
+<th>Artifacts</th>
 </tr>
 </thead>
 <tbody><tr>
 <td><strong>macOS</strong></td>
-<td><code>.app</code>, <code>.dmg</code></td>
-</tr>
-<tr>
-<td><strong>Windows</strong></td>
-<td><code>.msi</code>, <code>.exe</code></td>
+<td>root</td>
+<td><code>.app</code>, <code>.dmg</code>, <code>.app.tar.gz</code></td>
 </tr>
 <tr>
 <td><strong>Linux</strong></td>
+<td>root</td>
 <td><code>.deb</code>, <code>.rpm</code>, AppImage</td>
 </tr>
+<tr>
+<td><strong>Windows</strong></td>
+<td><code>slate_win64</code></td>
+<td><code>.msi</code>, <code>.exe</code> (NSIS)</td>
+</tr>
 </tbody></table>
-<p>Build on the <strong>target OS</strong> for reliable results. macOS builds link <code>objc2-app-kit</code> for pasteboard <code>changeCount</code>.</p>
 <hr>
-<h2 id="repository">Repository</h2><p><strong>GitHub:</strong> <a href="https://github.com/davidthegnomad/gnomad-slate">github.com/davidthegnomad/gnomad-slate</a> (private)</p>
+<h2 id="downloads">Downloads</h2><p>Pre-built installers: <a href="https://github.com/davidthegnomad/gnomad-slate/releases">GitHub Releases</a> · <a href="https://davidthegnomad.github.io/gnomad-slate/">GitHub Pages landing</a></p>
+<p>CI publishes all platforms on <code>v*</code> tags via <code>.github/workflows/release.yml</code>.</p>
+<hr>
+<h2 id="platform-notes">Platform notes</h2><h3 id="summon-shortcut">Summon shortcut</h3><table>
+<thead>
+<tr>
+<th>OS</th>
+<th>Shortcut</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>macOS</td>
+<td><code>Option+Space</code></td>
+</tr>
+<tr>
+<td>Windows</td>
+<td><code>Alt+Space</code></td>
+</tr>
+<tr>
+<td>Linux</td>
+<td><code>Super+Shift+Space</code></td>
+</tr>
+</tbody></table>
+<h3 id="linux-dependencies">Linux dependencies</h3><pre><code class="language-bash">bash scripts/install-linux-deps.sh
+</code></pre>
+<p>Requires <strong>webkit2gtk 4.1</strong> and <strong>libsoup3</strong> dev headers (Tauri 2). See <a href="LINUX_DESKTOP.md">LINUX_DESKTOP.md</a>.</p>
+<h3 id="macos">macOS</h3><ul>
+<li>Hide-on-blur when losing focus (launcher behavior)</li>
+<li>Pasteboard <code>changeCount</code> reduces idle clipboard polling</li>
+</ul>
+<h3 id="windows">Windows</h3><ul>
+<li>Separate codebase under <code>slate_win64/</code> (alpha <code>1.0.0-alpha.1</code>)</li>
+<li>WebView2 Evergreen bootstrapper in <code>slate_win64/src-tauri/tauri.conf.json</code></li>
+<li>Window stays visible when clicking away (no hide-on-blur)</li>
+</ul>
+<hr>
+<h2 id="ci">CI</h2><ul>
+<li><strong>PR/push:</strong> <code>.github/workflows/build-test.yml</code> (root tree)</li>
+<li><strong>Tags <code>v*</code>:</strong> <code>.github/workflows/release.yml</code> (macOS arm64 + x86_64, Linux, Windows from <code>slate_win64</code>)</li>
+<li><strong>Docs site:</strong> <code>.github/workflows/pages.yml</code> → GitHub Pages (<code>docs/</code>)</li>
+</ul>
+<p>Releases publish as <strong>pre-releases</strong> until marked stable.</p>
+<p>See <a href="RELEASE_RUNBOOK.md">RELEASE_RUNBOOK.md</a> and <a href="CROSS_PLATFORM_CODE_REVIEW.md">CROSS_PLATFORM_CODE_REVIEW.md</a>.</p>
 <hr>
 <p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
 

@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   USER GUIDE
-  Gnomad Slate · docs/USER_GUIDE.md
+  Gnomad Slate · docs\USER_GUIDE.md
 ════════════════════════════════════════════════════════════════════════
 
 USER GUIDE — GNOMAD SLATE
@@ -33,7 +33,14 @@ Prerequisites: Node.js LTS, Rust stable, Tauri v2 prerequisites
 
 Installers
 
-When GitHub Releases are published, download .dmg (macOS), .msi / .exe (Windows), or .deb / AppImage (Linux). See BUILD_PLATFORMS.md.
+Download from GitHub Pages or GitHub Releases:
+
+  Platform  |  Version        |  Artifacts                           
+  macOS     |  2.1.0-beta.4   |  .dmg, .app.tar.gz                   
+  Linux     |  2.1.0-beta.4   |  .deb, .rpm, AppImage                
+  Windows   |  1.0.0-alpha.1  |  .msi, .exe (built from slate_win64/)
+
+See BUILD_PLATFORMS.md and PLATFORM_LAYOUT.md.
 
 ────────────────────────────────────────
 
@@ -83,6 +90,8 @@ KEYBOARD SHORTCUTS
   ⌘P            |  Command palette                 
   ⌘⇧V           |  Clipboard history capsule       
   Esc           |  Close palette or clipboard modal
+
+Slate hides when you focus another app. Bring it back with Option+Space or by clicking the Dock icon.
 
 Command palette actions include JSON format, markdown cleanup, daily note helpers, and theme switching.
 

@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   SECURITY MODEL
-  Gnomad Slate · docs/SECURITY_MODEL.md
+  Gnomad Slate · docs\SECURITY_MODEL.md
 ════════════════════════════════════════════════════════════════════════
 
 SECURITY MODEL — GNOMAD SLATE

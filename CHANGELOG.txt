@@ -10,6 +10,71 @@ All notable changes to this project are documented here.
 
 ────────────────────────────────────────
 
+[1.0.0-ALPHA.1] — WINDOWS — JUNE 2026
+-------------------------------------
+
+Added — Windows port (slate_win64/)
+
+  • Separate Windows codebase: native menu, system tray, Alt+Space summon, WebView2 bootstrap
+  • Security P0: atomic vault writes, clipboard clear race fix, path validation, DOMPurify, CSP, async unlock
+  • Frontend extractions: Sidebar, EditorWorkstation, palette command IDs
+  • 17 Rust unit tests in slate_win64/src-tauri
+
+Release
+
+  • Windows .msi / .exe via CI (slate_win64 tree) · alpha channel
+
+────────────────────────────────────────
+
+[2.1.0-BETA.4] — JUNE 2026
+--------------------------
+
+Fixed
+
+  • Linux menu launch crash — set GDK_BACKEND=x11 and WEBKIT_DISABLE_DMABUF_RENDERER=1 at startup when unset, fixing WebKitGTK Gdk Error 71 on Wayland sessions (app menu / .desktop launches)
+
+────────────────────────────────────────
+
+[2.1.0-BETA.3] — JUNE 2026
+--------------------------
+
+Added — Linux desktop (alpha)
+
+  • Platform-split menus (menu/linux.rs, menu/macos.rs), system tray, Super+Shift+Space summon shortcut
+  • Linux UI: filename on own row, line numbers toggle, in-app dialogs (no alert()), detailed Help (F1) with support contact
+  • Packaging: gnomad-slate binary, Fedora/Nobara RPM and DEB with .desktop entry, libsoup3 deps
+  • Settings persistence via tauri-plugin-store; strict CSP; structured tracing logs
+  • File → Close (Ctrl+W) and File → Quit (Ctrl+Q) with vault-aware confirm_quit lifecycle
+
+Fixed
+
+  • Unified quit flow (confirm_quit) — no zombie process when global shortcut plugin keeps event loop alive
+  • Linux close path uses runtime isLinuxDesktop() so quit works even if plugin-os loads after mount
+  • Version display on Linux matches package.json / Cargo.toml semver
+
+Release
+
+  • GitHub Release v2.1.0-beta.3 with Linux .rpm and .deb (Nobara/Fedora); macOS/Windows matrix builds
+  • Session log: docs/LINUX_SESSION_2026-06-23.md
+
+────────────────────────────────────────
+
+[2.1.0-BETA.1] — JUNE 2026
+--------------------------
+
+Added
+
+  • About menu with version info and Check for Updates (Tauri updater)
+  • Custom app icon and refreshed window sizing
+  • Cmd+S / Cmd+N shortcuts; platform-aware beta labels
+
+Release
+
+  • GitHub Release v2.1.0-beta.1 with macOS Apple Silicon artifacts (.app.tar.gz, .zip)
+  • Marketing and downloads on davidcole.cloud/apps/slate
+
+────────────────────────────────────────
+
 [0.1.0] — JUNE 2026
 -------------------
 

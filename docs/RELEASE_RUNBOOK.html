@@ -222,10 +222,10 @@ body {
   <div class="layout">
     <nav class="sidebar" aria-label="Table of contents">
           <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
-          <p class="doc-path">docs/RELEASE_RUNBOOK.md</p>
-          <a href="#pre-release" class="toc-h2">Pre-release</a>
-<a href="#tag-amp-build-manual-v01" class="toc-h2">Tag &amp; build (manual v0.1)</a>
-<a href="#ci-planned" class="toc-h2">CI (planned)</a>
+          <p class="doc-path">docs\RELEASE_RUNBOOK.md</p>
+          <a href="#platform-trees" class="toc-h2">Platform trees</a>
+<a href="#pre-release" class="toc-h2">Pre-release</a>
+<a href="#tag-amp-ci-release" class="toc-h2">Tag &amp; CI release</a>
 <a href="#post-release" class="toc-h2">Post-release</a>
         </nav>
     <main class="content doc-body">
@@ -233,37 +233,58 @@ body {
         <h2>Release Runbook</h2>
         <p class="formats">Also available: <a href="RELEASE_RUNBOOK.md">Markdown</a> · <a href="RELEASE_RUNBOOK.txt">Plain text</a></p>
       </header>
-      <h1 id="release-runbook-gnomad-slate">Release Runbook — Gnomad Slate</h1><p><strong>Version:</strong> 0.1.0</p>
+      <h1 id="release-runbook-gnomad-slate">Release Runbook — Gnomad Slate</h1><p><strong>Last updated:</strong> June 2026</p>
+<hr>
+<h2 id="platform-trees">Platform trees</h2><table>
+<thead>
+<tr>
+<th>Tree</th>
+<th>OS</th>
+<th>Version field</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Root</td>
+<td>macOS, Linux</td>
+<td><code>package.json</code> + <code>src-tauri/tauri.conf.json</code> → <code>2.1.0-beta.4</code></td>
+</tr>
+<tr>
+<td><code>slate_win64/</code></td>
+<td>Windows</td>
+<td><code>slate_win64/package.json</code> + <code>slate_win64/src-tauri/tauri.conf.json</code> → <code>1.0.0-alpha.1</code></td>
+</tr>
+</tbody></table>
+<p>See <a href="PLATFORM_LAYOUT.md">PLATFORM_LAYOUT.md</a>.</p>
 <hr>
 <h2 id="pre-release">Pre-release</h2><ol>
-<li>Update <code>version</code> in <code>package.json</code> and <code>src-tauri/tauri.conf.json</code></li>
+<li>Bump versions in the correct tree(s)</li>
 <li>Update <a href="../CHANGELOG.md">CHANGELOG.md</a></li>
-<li>Run automated tests:<pre><code class="language-bash">npm test
-cd src-tauri &amp;&amp; cargo test
+<li>Run tests:<pre><code class="language-bash">npm test &amp;&amp; cd src-tauri &amp;&amp; cargo test
+cd slate_win64 &amp;&amp; npm test &amp;&amp; cd src-tauri &amp;&amp; cargo test
 npm run build
 </code></pre>
 </li>
 <li>Manual QA: <a href="QA_CHECKLIST.md">QA_CHECKLIST.md</a></li>
 <li>Regenerate docs: <code>npm run docs:export</code></li>
-<li>Commit Markdown + exported HTML/TXT</li>
+<li>Commit Markdown + exported HTML/TXT + <code>docs/index.html</code></li>
 </ol>
 <hr>
-<h2 id="tag-amp-build-manual-v01">Tag &amp; build (manual v0.1)</h2><pre><code class="language-bash">git tag v0.1.0
-git push origin v0.1.0
-npm run tauri build
+<h2 id="tag-amp-ci-release">Tag &amp; CI release</h2><pre><code class="language-bash">git tag v2.1.0-beta.4
+git push origin main
+git push origin v2.1.0-beta.4
 </code></pre>
-<p>Upload artifacts from <code>src-tauri/target/release/bundle/</code> to GitHub Releases.</p>
-<hr>
-<h2 id="ci-planned">CI (planned)</h2><p>Mirror <a href="https://github.com/davidthegnomad/gnomad-preview">gnomad-preview</a> workflows:</p>
+<p><code>.github/workflows/release.yml</code> builds:</p>
 <ul>
-<li>PR: <code>cargo test</code>, <code>npm test</code>, <code>npm run build</code></li>
-<li>Tag: <code>tauri build</code> matrix (macOS, Windows, Linux)</li>
+<li>macOS arm64 + x64 (root)</li>
+<li>Linux (root)</li>
+<li>Windows (<code>slate_win64/</code> → <code>1.0.0-alpha.1</code> artifacts)</li>
 </ul>
+<p><code>.github/workflows/pages.yml</code> deploys <code>docs/</code> (download links on GitHub Pages).</p>
 <hr>
 <h2 id="post-release">Post-release</h2><ul>
-<li><input disabled="" type="checkbox"> Verify installer on clean VM</li>
-<li><input disabled="" type="checkbox"> Spot-check vault migration, clipboard filter, markdown preview</li>
-<li><input disabled="" type="checkbox"> Update <a href="../HUMAN.md">HUMAN.md</a> if signing/notarization added</li>
+<li><input disabled="" type="checkbox"> Verify installers on clean VM per platform</li>
+<li><input disabled="" type="checkbox"> Confirm <a href="index.html">docs/index.html</a> download URLs match release asset names</li>
+<li><input disabled="" type="checkbox"> Spot-check vault, clipboard filter, markdown preview</li>
 </ul>
 <hr>
 <p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>

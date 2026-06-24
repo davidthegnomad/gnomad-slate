@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gnomad Slate — Gnomad Slate</title>
+  <meta name="description" content="Gnomad Slate documentation for Gnomad Slate." />
+  <style>:root {
+  --bg-base: #0d1117;
+  --bg-panel: rgba(22, 27, 34, 0.95);
+  --bg-elevated: rgba(33, 38, 45, 0.98);
+  --border: rgba(48, 54, 61, 0.9);
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #818cf8;
+  --accent-secondary: #c084fc;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --pill-radius: 999px;
+  --radius: 12px;
+  --mesh:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.18), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 10% 30%, rgba(192, 132, 252, 0.1), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 95% 40%, rgba(129, 140, 248, 0.08), transparent 50%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg-base);
+  min-height: 100vh;
+}
+
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--mesh);
+  z-index: 0;
+}
+
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 1.5rem 1.25rem;
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.brand-icon { font-size: 1.5rem; }
+.brand h1 { font-size: 1rem; font-weight: 600; }
+
+.doc-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  word-break: break-all;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar a.toc-h3 { padding-left: 1.1rem; font-size: 0.78rem; }
+.sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.sidebar a.active { color: var(--accent); background: rgba(129, 140, 248, 0.12); }
+
+.content {
+  padding: 2rem 2.5rem 3rem;
+  max-width: 760px;
+}
+
+.hero { margin-bottom: 1.5rem; }
+.hero h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.formats { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+.formats a { color: var(--accent); }
+
+.doc-body h1 { font-size: 1.5rem; margin: 1.5rem 0 0.75rem; }
+.doc-body h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.doc-body h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; color: var(--accent); }
+.doc-body h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+
+.doc-body p { margin-bottom: 0.85rem; }
+.doc-body ul, .doc-body ol { margin: 0 0 1rem 1.25rem; color: var(--muted); }
+.doc-body li { margin-bottom: 0.35rem; }
+.doc-body li strong { color: var(--text); }
+
+.doc-body a { color: var(--accent); }
+.doc-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(255,255,255,0.08);
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  color: var(--accent-secondary);
+}
+
+.doc-body pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.doc-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 1rem 0;
+}
+
+.doc-body th, .doc-body td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-body th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.6rem 1rem;
+  margin: 1rem 0;
+  background: rgba(129, 140, 248, 0.08);
+  border-radius: 0 12px 12px 0;
+  color: var(--muted);
+}
+
+.doc-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.doc-footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.doc-footer a { color: var(--accent); text-decoration: none; }
+.doc-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="mesh-bg" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+          <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
+          <p class="doc-path">docs\CROSS_PLATFORM_CODE_REVIEW.md</p>
+          <a href="#executive-summary" class="toc-h2">Executive summary</a>
+<a href="#critical-bugs-p0" class="toc-h2">Critical bugs (P0)</a>
+<a href="#macos-improvements" class="toc-h2">macOS improvements</a>
+<a href="#windows-improvements" class="toc-h2">Windows improvements</a>
+<a href="#linux-improvements" class="toc-h2">Linux improvements</a>
+<a href="#security-cross-platform-notes" class="toc-h2">Security cross-platform notes</a>
+<a href="#ci-release-gaps" class="toc-h2">CI / release gaps</a>
+<a href="#prioritized-roadmap" class="toc-h2">Prioritized roadmap</a>
+<a href="#p0-implemented" class="toc-h3">P0 — Implemented</a>
+<a href="#p1-partial-next" class="toc-h3">P1 — Partial / next</a>
+<a href="#p2-quality-of-life" class="toc-h3">P2 — Quality of life</a>
+<a href="#what-already-works-well" class="toc-h2">What already works well</a>
+<a href="#related-docs" class="toc-h2">Related docs</a>
+        </nav>
+    <main class="content doc-body">
+      <header class="hero">
+        <h2>Gnomad Slate</h2>
+        <p class="formats">Also available: <a href="CROSS_PLATFORM_CODE_REVIEW.md">Markdown</a> · <a href="CROSS_PLATFORM_CODE_REVIEW.txt">Plain text</a></p>
+      </header>
+      <h1 id="gnomad-slate-cross-platform-code-review">Gnomad Slate — Cross-Platform Code Review</h1><p><strong>Project:</strong> <code>05_apps_and_extensions/gnomad-slate</code><br><strong>Scope:</strong> macOS, Windows, Linux (Tauri 2 desktop-only)<br><strong>Date:</strong> 2026-06-15<br><strong>Reviewers:</strong> Codebase audit + Nemotron 3 Ultra (OpenRouter) synthesis  </p>
+<blockquote>
+<p><strong>Update 2026-06-15:</strong> P0 + most P1 fixes implemented in source. Signing/notarization remain optional infra.</p>
+</blockquote>
+<p><strong>Raw Nemotron artifact:</strong> <code>scripts/context-stack/offload-artifacts/gnomad-slate-cross-platform-review.json</code></p>
+<hr>
+<h2 id="executive-summary">Executive summary</h2><ul>
+<li><strong>Global shortcut was macOS-only:</strong> <code>Option+Space</code> hardcoded; Windows/Linux checklist promised <code>Alt+Space</code> but code did not implement it.</li>
+<li><strong>Keyboard UX assumed macOS:</strong> Palette and sidebar used <code>⌘</code> / <code>Cmd</code> labels everywhere — wrong on Windows/Linux.</li>
+<li><strong>Note rename data bug:</strong> Changing a note title created a <strong>new file</strong> without deleting the old one → duplicate notes and orphaned files.</li>
+<li><strong>Save-on-close gap:</strong> Debounced autosave did not flush on unmount/window close; no unsaved-changes prompt before quit.</li>
+<li><strong>Platform behavior mismatch:</strong> Hide-on-blur applied on all OSes; launcher-style dismiss is macOS-appropriate but breaks Windows/Linux focus workflows.</li>
+<li><strong>No CI/release pipeline</strong> despite cross-platform checklist and BUILD docs.</li>
+</ul>
+<hr>
+<h2 id="critical-bugs-p0">Critical bugs (P0)</h2><table>
+<thead>
+<tr>
+<th>#</th>
+<th>File</th>
+<th>Problem</th>
+<th>Fix</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>src-tauri/src/lib.rs</code></td>
+<td>Summon shortcut <code>Option+Space</code> only</td>
+<td><code>Option+Space</code> on macOS, <code>Alt+Space</code> elsewhere; expose label to UI</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>src-tauri/src/filesystem.rs</code></td>
+<td><code>write_note</code> always creates new filename on title change</td>
+<td>Accept <code>previous_filename</code>; delete old file after successful write</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>src/App.tsx</code></td>
+<td>Debounced save not flushed on close/unmount</td>
+<td>Flush pending save; compare snapshot for dirty state</td>
+<td><strong>M</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>src/App.tsx</code>, <code>lib.rs</code></td>
+<td>No close guard</td>
+<td><code>CloseRequested</code> → emit event → <code>UnsavedChangesModal</code></td>
+<td><strong>M</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>src/App.tsx</code></td>
+<td>Shortcuts hardcoded to macOS glyphs</td>
+<td><code>modKeyLabel.ts</code> + dynamic palette/sidebar labels</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>src-tauri/capabilities/default.json</code></td>
+<td>Missing <code>global-shortcut</code> permission</td>
+<td>Add <code>global-shortcut:default</code></td>
+<td><strong>S</strong></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="macos-improvements">macOS improvements</h2><table>
+<thead>
+<tr>
+<th>#</th>
+<th>File</th>
+<th>Problem</th>
+<th>Fix</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>lib.rs</code></td>
+<td>No native File/Edit menu</td>
+<td>File (New/Save/Quit), Edit, View (Palette) with <code>CmdOrCtrl</code> accelerators</td>
+<td><strong>M</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>lib.rs</code></td>
+<td>Hide-on-blur</td>
+<td>Keep on macOS only (<code>cfg(target_os = &quot;macos&quot;)</code>)</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>pasteboard_macos.rs</code></td>
+<td>Already optimizes clipboard polling</td>
+<td>No change — document in checklist</td>
+<td>—</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>tauri.conf.json</code></td>
+<td>No minimum macOS version</td>
+<td><code>minimumSystemVersion: &quot;10.15&quot;</code></td>
+<td><strong>S</strong></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="windows-improvements">Windows improvements</h2><table>
+<thead>
+<tr>
+<th>#</th>
+<th>File</th>
+<th>Problem</th>
+<th>Fix</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>lib.rs</code></td>
+<td>Alt+Space not registered</td>
+<td>Platform-specific shortcut string</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>lib.rs</code></td>
+<td>Hide on blur</td>
+<td>Disabled on non-macOS</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>App.tsx</code></td>
+<td><code>navigator.clipboard</code> for HTML copy</td>
+<td>Rust <code>copy_text_to_clipboard</code> via arboard</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>tauri.conf.json</code></td>
+<td>WebView2 bootstrap</td>
+<td><code>downloadBootstrapper</code> configured</td>
+<td><strong>S</strong></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="linux-improvements">Linux improvements</h2><table>
+<thead>
+<tr>
+<th>#</th>
+<th>File</th>
+<th>Problem</th>
+<th>Fix</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>package.json</code></td>
+<td>No Wayland/X11 split</td>
+<td><code>tauri:dev</code> default + <code>tauri:dev:x11</code> fallback</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>scripts/install-linux-deps.sh</code></td>
+<td>Missing</td>
+<td>dnf + apt installer script</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>clipboard.rs</code></td>
+<td>No changeCount (expected)</td>
+<td>arboard polling 1s/3s — documented</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="security-cross-platform-notes">Security cross-platform notes</h2><table>
+<thead>
+<tr>
+<th>#</th>
+<th>File</th>
+<th>Problem</th>
+<th>Fix</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>App.tsx</code></td>
+<td>Revealed secrets in React state indefinitely</td>
+<td>Auto-clear after 30s; clear on tab switch / lock</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>App.tsx</code></td>
+<td>Copy HTML via web clipboard API</td>
+<td>Route through Rust clipboard command</td>
+<td><strong>S</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>filesystem.rs</code></td>
+<td>Path traversal</td>
+<td>Already validates filenames — good</td>
+<td>—</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Vault crypto</td>
+<td>Rust-only session</td>
+<td>Architecture sound — keep secrets out of IPC when possible</td>
+<td><strong>M</strong> (future)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="ci-release-gaps">CI / release gaps</h2><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Problem</th>
+<th>Fix</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>No GitHub Actions</td>
+<td>Added <code>build-test.yml</code> + <code>release.yml</code></td>
+<td><strong>M</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>macOS arm64-only CI</td>
+<td>Matrix includes x86_64 + aarch64</td>
+<td><strong>M</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>No signing secrets wired</td>
+<td><code>.env.example</code> template (optional)</td>
+<td><strong>S</strong></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="prioritized-roadmap">Prioritized roadmap</h2><h3 id="p0-implemented">P0 — Implemented</h3><ol>
+<li>Platform summon shortcut (Option vs Alt+Space)</li>
+<li>Note rename without duplicates</li>
+<li>Flush debounced save + close guard</li>
+<li>Dynamic ⌘/Ctrl labels</li>
+<li>Global shortcut capability + native menu</li>
+<li>macOS-only hide-on-blur</li>
+</ol>
+<h3 id="p1-partial-next">P1 — Partial / next</h3><ol start="7">
+<li>Split <code>App.tsx</code> monolith into hooks/components</li>
+<li>Windows/Linux biometrics / Touch ID parity (future)</li>
+<li>Code signing + notarization in CI</li>
+<li>Palette commands that are still mock (Gist export)</li>
+</ol>
+<h3 id="p2-quality-of-life">P2 — Quality of life</h3><ol start="11">
+<li>Dirty indicator in window title</li>
+<li>Flatpak manifest</li>
+<li>Automated release notes script</li>
+</ol>
+<hr>
+<h2 id="what-already-works-well">What already works well</h2><ul>
+<li>Vault-X crypto in Rust with rate-limited unlock</li>
+<li>Clipboard sensitivity filter + macOS pasteboard changeCount optimization</li>
+<li>Legacy data dir migration to <code>dirs::data_dir()/gnomad-slate</code></li>
+<li>Filename validation / path traversal protection</li>
+<li>System theme preference with <code>prefers-color-scheme</code> listener</li>
+<li>Markdown preview sanitization (script strip)</li>
+</ul>
+<hr>
+<h2 id="related-docs">Related docs</h2><ul>
+<li><a href="./CROSS_PLATFORM_CHECKLIST.md">CROSS_PLATFORM_CHECKLIST.md</a></li>
+<li><a href="./BUILD_PLATFORMS.md">BUILD_PLATFORMS.md</a></li>
+<li><a href="./QA_CHECKLIST.md">QA_CHECKLIST.md</a></li>
+</ul>
+
+      <footer class="doc-footer">
+        <p>Built with <span aria-label="love">❤️</span> by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const links = document.querySelectorAll(".sidebar a[href^='#']");
+    const sections = [...links].map((a) => document.querySelector(a.getAttribute("href")));
+    const onScroll = () => {
+      let cur = 0;
+      sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= 120) cur = i; });
+      links.forEach((l, i) => l.classList.toggle("active", i === cur));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>

@@ -2,7 +2,16 @@
 
 > Internal repo: `gnomad-slate` · Tier 2 (Focused Team) | Escalation: `02_ai_engineering/gnomad-swarm-core/`
 
-## SLATE-CORE: Tauri / Rust / Security Agent
+## Platform trees
+
+| Tree | Platforms | Agent doc |
+|------|-----------|-----------|
+| **Repository root** | macOS, Linux | This file |
+| **`slate_win64/`** | Windows only | [slate_win64/AGENTS.md](slate_win64/AGENTS.md) |
+
+Do not edit Windows menu/tray code in the root tree or macOS code in `slate_win64/`. See [docs/PLATFORM_LAYOUT.md](docs/PLATFORM_LAYOUT.md).
+
+---
 
 **Stack:** Tauri 2, Rust 2021, aes-gcm, argon2, zeroize, arboard, clipboard_filter, objc2-app-kit (macOS)  
 **Location:** `05_apps_and_extensions/gnomad-slate/src-tauri/`

@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   ACCESSIBILITY
-  Gnomad Slate · docs/ACCESSIBILITY.md
+  Gnomad Slate · docs\ACCESSIBILITY.md
 ════════════════════════════════════════════════════════════════════════
 
 ACCESSIBILITY — GNOMAD SLATE

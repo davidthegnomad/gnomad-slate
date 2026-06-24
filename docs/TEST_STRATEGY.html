@@ -222,7 +222,7 @@ body {
   <div class="layout">
     <nav class="sidebar" aria-label="Table of contents">
           <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
-          <p class="doc-path">docs/TEST_STRATEGY.md</p>
+          <p class="doc-path">docs\TEST_STRATEGY.md</p>
           <a href="#summary" class="toc-h2">Summary</a>
 <a href="#rust-tests-cargo-test" class="toc-h2">Rust tests (cargo test)</a>
 <a href="#cryptotests" class="toc-h3">crypto::tests</a>
@@ -259,8 +259,14 @@ body {
 <tr>
 <td><strong>Frontend unit</strong></td>
 <td><code>npm test</code></td>
-<td><strong>4</strong></td>
+<td><strong>5</strong></td>
 <td>Theme resolution, markdown preview</td>
+</tr>
+<tr>
+<td><strong>Rust (Windows tree)</strong></td>
+<td><code>cd slate_win64/src-tauri &amp;&amp; cargo test</code></td>
+<td><strong>17</strong></td>
+<td>Same modules + vault_io tests</td>
 </tr>
 <tr>
 <td><strong>Manual / E2E</strong></td>

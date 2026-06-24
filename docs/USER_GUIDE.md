@@ -26,7 +26,15 @@ npm run tauri dev
 
 ### Installers
 
-When GitHub Releases are published, download `.dmg` (macOS), `.msi` / `.exe` (Windows), or `.deb` / AppImage (Linux). See [BUILD_PLATFORMS.md](BUILD_PLATFORMS.md).
+Download from **[GitHub Pages](https://davidthegnomad.github.io/gnomad-slate/)** or [GitHub Releases](https://github.com/davidthegnomad/gnomad-slate/releases):
+
+| Platform | Version | Artifacts |
+|----------|---------|-----------|
+| macOS | 2.1.0-beta.4 | `.dmg`, `.app.tar.gz` |
+| Linux | 2.1.0-beta.4 | `.deb`, `.rpm`, AppImage |
+| Windows | 1.0.0-alpha.1 | `.msi`, `.exe` (built from `slate_win64/`) |
+
+See [BUILD_PLATFORMS.md](BUILD_PLATFORMS.md) and [PLATFORM_LAYOUT.md](PLATFORM_LAYOUT.md).
 
 ---
 

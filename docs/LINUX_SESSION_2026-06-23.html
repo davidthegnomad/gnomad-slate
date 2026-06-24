@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gnomad Slate — Gnomad Slate</title>
+  <meta name="description" content="Gnomad Slate documentation for Gnomad Slate." />
+  <style>:root {
+  --bg-base: #0d1117;
+  --bg-panel: rgba(22, 27, 34, 0.95);
+  --bg-elevated: rgba(33, 38, 45, 0.98);
+  --border: rgba(48, 54, 61, 0.9);
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #818cf8;
+  --accent-secondary: #c084fc;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --pill-radius: 999px;
+  --radius: 12px;
+  --mesh:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.18), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 10% 30%, rgba(192, 132, 252, 0.1), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 95% 40%, rgba(129, 140, 248, 0.08), transparent 50%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg-base);
+  min-height: 100vh;
+}
+
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--mesh);
+  z-index: 0;
+}
+
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 1.5rem 1.25rem;
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.brand-icon { font-size: 1.5rem; }
+.brand h1 { font-size: 1rem; font-weight: 600; }
+
+.doc-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  word-break: break-all;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar a.toc-h3 { padding-left: 1.1rem; font-size: 0.78rem; }
+.sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.sidebar a.active { color: var(--accent); background: rgba(129, 140, 248, 0.12); }
+
+.content {
+  padding: 2rem 2.5rem 3rem;
+  max-width: 760px;
+}
+
+.hero { margin-bottom: 1.5rem; }
+.hero h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.formats { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+.formats a { color: var(--accent); }
+
+.doc-body h1 { font-size: 1.5rem; margin: 1.5rem 0 0.75rem; }
+.doc-body h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.doc-body h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; color: var(--accent); }
+.doc-body h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+
+.doc-body p { margin-bottom: 0.85rem; }
+.doc-body ul, .doc-body ol { margin: 0 0 1rem 1.25rem; color: var(--muted); }
+.doc-body li { margin-bottom: 0.35rem; }
+.doc-body li strong { color: var(--text); }
+
+.doc-body a { color: var(--accent); }
+.doc-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(255,255,255,0.08);
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  color: var(--accent-secondary);
+}
+
+.doc-body pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.doc-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 1rem 0;
+}
+
+.doc-body th, .doc-body td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-body th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.6rem 1rem;
+  margin: 1rem 0;
+  background: rgba(129, 140, 248, 0.08);
+  border-radius: 0 12px 12px 0;
+  color: var(--muted);
+}
+
+.doc-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.doc-footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.doc-footer a { color: var(--accent); text-decoration: none; }
+.doc-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="mesh-bg" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+          <div class="brand"><span class="brand-icon">⚡</span><h1>Gnomad Slate</h1></div>
+          <p class="doc-path">docs\LINUX_SESSION_2026-06-23.md</p>
+          <a href="#executive-summary" class="toc-h2">Executive summary</a>
+<a href="#timeline" class="toc-h2">Timeline</a>
+<a href="#architecture-decisions" class="toc-h2">Architecture decisions</a>
+<a href="#single-repo-platform-split-no-linux-fork" class="toc-h3">Single repo, platform split (no Linux fork)</a>
+<a href="#quit-lifecycle-critical-fix" class="toc-h3">Quit lifecycle (critical fix)</a>
+<a href="#commits-on-featlinux-desktop-6-release" class="toc-h2">Commits on feat/linux-desktop (6 + release)</a>
+<a href="#rust-tauri-changes-detail" class="toc-h2">Rust / Tauri changes (detail)</a>
+<a href="#new-split-modules" class="toc-h3">New / split modules</a>
+<a href="#librs-commands-amp-behavior" class="toc-h3">lib.rs commands &amp; behavior</a>
+<a href="#linux-file-menu-final" class="toc-h3">Linux File menu (final)</a>
+<a href="#packaging-tauriconfjson" class="toc-h3">Packaging (tauri.conf.json)</a>
+<a href="#filesystem" class="toc-h3">Filesystem</a>
+<a href="#frontend-changes-linux-gated" class="toc-h2">Frontend changes (Linux-gated)</a>
+<a href="#dev-script" class="toc-h3">Dev script</a>
+<a href="#ai-code-reviews-consensus" class="toc-h2">AI code reviews (consensus)</a>
+<a href="#local-build-amp-install-nobara" class="toc-h2">Local build &amp; install (Nobara)</a>
+<a href="#dependencies" class="toc-h3">Dependencies</a>
+<a href="#install-rpm" class="toc-h3">Install RPM</a>
+<a href="#launch-workaround-wayland-webkit" class="toc-h3">Launch workaround (Wayland / WebKit)</a>
+<a href="#verify-quit" class="toc-h3">Verify quit</a>
+<a href="#ci-release" class="toc-h2">CI / release</a>
+<a href="#known-limitations" class="toc-h2">Known limitations</a>
+<a href="#test-matrix-run-before-release" class="toc-h2">Test matrix (run before release)</a>
+<a href="#references" class="toc-h2">References</a>
+        </nav>
+    <main class="content doc-body">
+      <header class="hero">
+        <h2>Gnomad Slate</h2>
+        <p class="formats">Also available: <a href="LINUX_SESSION_2026-06-23.md">Markdown</a> · <a href="LINUX_SESSION_2026-06-23.txt">Plain text</a></p>
+      </header>
+      <h1 id="gnomad-slate-linux-desktop-session-log">Gnomad Slate — Linux Desktop Session Log</h1><p><strong>Date:</strong> 23 June 2026<br><strong>Branch:</strong> <code>feat/linux-desktop</code> → merged to <code>main</code> as <strong>v2.1.0-beta.3</strong><br><strong>PR:</strong> <a href="https://github.com/davidthegnomad/gnomad-slate/pull/1">#1 — feat(linux): desktop integration for Nobara/Fedora (alpha)</a><br><strong>Target machine:</strong> Nobara 43 (Fedora family), Wayland/X11 hybrid<br><strong>Release channel:</strong> Linux <strong>alpha</strong> (macOS remains <strong>beta</strong>)</p>
+<hr>
+<h2 id="executive-summary">Executive summary</h2><p>Today we brought Gnomad Slate from a macOS-focused beta to a <strong>first-class Linux desktop build</strong> for Nobara/Fedora, without forking the repo. Work spanned Rust shell integration (tray, menus, shortcuts, quit lifecycle), Linux-only frontend UX, packaging (RPM/DEB, <code>gnomad-slate</code> binary), multi-model code review, local dogfooding, and a production quit/close fix verified on the user&#39;s machine.</p>
+<p><strong>Shipped outcome:</strong> <code>v2.1.0-beta.3</code> with Linux <code>.rpm</code> / <code>.deb</code> on GitHub Releases; installable via <code>dnf install</code> on Fedora/Nobara.</p>
+<hr>
+<h2 id="timeline">Timeline</h2><table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>What happened</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Morning</strong></td>
+<td>GLM P0/P1/P2 reviews; implemented tray, <code>Super+Shift+Space</code>, platform-split menus, CSP, plugin-store, atomic vault writes</td>
+</tr>
+<tr>
+<td><strong>Midday</strong></td>
+<td>Professional workflow: feature branch, 4 structured commits, PR #1, CI green (<code>build-test.yml</code>)</td>
+</tr>
+<tr>
+<td><strong>Afternoon</strong></td>
+<td>User UX requests (Linux-only): filename on own line, line numbers, help content, tooltip placement, version sync</td>
+</tr>
+<tr>
+<td><strong>Local install</strong></td>
+<td>Built RPM from repo (no Linux assets on GitHub yet); installed <code>2.1.0-beta.2</code> → later <code>beta.3</code> with fixes</td>
+</tr>
+<tr>
+<td><strong>Evening</strong></td>
+<td>Kimi K2.6 + Qwen 3.5 (NIM) reviews flagged quit lifecycle; implemented <code>confirm_quit</code> unified flow</td>
+</tr>
+<tr>
+<td><strong>Final</strong></td>
+<td>User reported app would not close; root-caused <code>isLinux</code> mount race + missing File → Close; fixed and verified</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="architecture-decisions">Architecture decisions</h2><h3 id="single-repo-platform-split-no-linux-fork">Single repo, platform split (no Linux fork)</h3><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>macOS</th>
+<th>Linux</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Menus</td>
+<td><code>src-tauri/src/menu/macos.rs</code></td>
+<td><code>src-tauri/src/menu/linux.rs</code></td>
+</tr>
+<tr>
+<td>Tray</td>
+<td>macOS native patterns</td>
+<td><code>src-tauri/src/linux_tray.rs</code></td>
+</tr>
+<tr>
+<td>Hide-on-blur</td>
+<td>Yes (launcher behavior)</td>
+<td><strong>No</strong> — window stays until user hides/quits</td>
+</tr>
+<tr>
+<td>Summon shortcut</td>
+<td><code>Option+Space</code></td>
+<td><code>Super+Shift+Space</code></td>
+</tr>
+<tr>
+<td>Version label</td>
+<td><code>v2.1 beta</code> style</td>
+<td><code>v{semver}</code> from <code>CARGO_PKG_VERSION</code></td>
+</tr>
+<tr>
+<td>Release channel</td>
+<td>beta</td>
+<td>alpha</td>
+</tr>
+</tbody></table>
+<p>Frontend gates Linux UI via <code>src/utils/platform.ts</code> → <code>isLinuxDesktop()</code> (<code>@tauri-apps/plugin-os</code>).</p>
+<h3 id="quit-lifecycle-critical-fix">Quit lifecycle (critical fix)</h3><p><strong>Problem:</strong> Multiple quit paths (<code>request_quit</code>, tray, window X, GTK predefined Quit) raced with frontend save/cleanup. On Linux, <code>win.destroy()</code> without <code>app.exit(0)</code> left a <strong>zombie process</strong> because the global shortcut plugin keeps the Tokio/event loop alive.</p>
+<p><strong>Solution — unified flow:</strong></p>
+<pre><code>Tray Quit / File → Quit / app-quit-requested
+  → frontend: save if needed, vault cleanup
+  → IPC confirm_quit
+  → vault_session::close_session
+  → app.exit(0)
+  → std::process::exit(0)   # Linux hard kill for shortcut plugin
+
+File → Close / window X / Super+Shift+Space hide
+  → window-close-requested
+  → hide window (Linux) — process stays for tray summon
+</code></pre>
+<p><strong>Second bug (user report):</strong> <code>isLinux</code> was captured once in <code>useState(() =&gt; isLinuxDesktop())</code>. If <code>plugin-os</code> was not ready at mount, <code>closeApp()</code> called <code>win.destroy()</code> instead of <code>confirm_quit</code> on quit paths. <strong>Fix:</strong> call <code>isLinuxDesktop()</code> at invocation time; hydrate <code>isLinux</code> in <code>useEffect</code>.</p>
+<hr>
+<h2 id="commits-on-featlinux-desktop-6-release">Commits on <code>feat/linux-desktop</code> (6 + release)</h2><table>
+<thead>
+<tr>
+<th>Commit</th>
+<th>Summary</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>e27f5e7</code></td>
+<td>Rust shell: tray, <code>menu/{linux,macos,fallback}.rs</code>, shortcuts, quit hooks, logging</td>
+</tr>
+<tr>
+<td><code>94d2cfc</code></td>
+<td>Frontend: Linux-gated toolbar, help dialog, line numbers, <code>AppMessageDialog</code>, close handlers</td>
+</tr>
+<tr>
+<td><code>f3bf64b</code></td>
+<td>Packaging: <code>gnomad-slate</code> binary, RPM/DEB desktop template, libsoup3 deps, CSP, plugin-store</td>
+</tr>
+<tr>
+<td><code>f091f2c</code></td>
+<td>Docs/CI: <code>LINUX_DESKTOP.md</code>, <code>BUILD_PLATFORMS.md</code>, review artifacts, CI libsoup3</td>
+</tr>
+<tr>
+<td><code>48bd04f</code></td>
+<td>Replace <code>request_quit</code> with backend <code>confirm_quit</code>; Kimi/Qwen review artifacts</td>
+</tr>
+<tr>
+<td><code>8c47cd4</code></td>
+<td>File → Close (<code>Ctrl+W</code>), File → Quit (<code>Ctrl+Q</code>); runtime <code>isLinuxDesktop()</code>; Linux <code>process::exit</code></td>
+</tr>
+<tr>
+<td><em>(release)</em></td>
+<td><code>2.1.0-beta.3</code>: version bump, CHANGELOG, session log, release CI signing fix</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="rust-tauri-changes-detail">Rust / Tauri changes (detail)</h2><h3 id="new-split-modules">New / split modules</h3><ul>
+<li><code>src-tauri/src/menu/mod.rs</code> — dispatches to <code>linux</code> / <code>macos</code> / <code>fallback</code></li>
+<li><code>src-tauri/src/menu/linux.rs</code> — File, Edit, View, Window, Help; Ctrl accelerators; no GTK predefined Quit</li>
+<li><code>src-tauri/src/linux_tray.rs</code> — Show / Hide / Quit; left-click show (Wayland-friendly)</li>
+<li><code>src-tauri/src/shortcuts.rs</code> — <code>SUMMON_SHORTCUT</code> constant (<code>Super+Shift+Space</code> on Linux)</li>
+<li><code>src-tauri/src/logging.rs</code> — <code>tracing</code> + <code>EnvFilter</code></li>
+</ul>
+<h3 id="librs-commands-amp-behavior"><code>lib.rs</code> commands &amp; behavior</h3><ul>
+<li><strong><code>confirm_quit</code></strong> — idempotent via <code>QUIT_IN_PROGRESS</code>; locks vault; <code>app.exit(0)</code> + <code>std::process::exit(0)</code> on Linux</li>
+<li><strong><code>emit_quit_requested</code></strong> — tray/menu → <code>app-quit-requested</code> event to frontend</li>
+<li><strong><code>get_app_version_info</code></strong> — channel <code>alpha</code> on Linux, <code>beta</code> on macOS; display version matches package semver on Linux</li>
+<li><strong><code>prepare_for_quit</code></strong> — vault lock helper (frontend calls before final quit)</li>
+<li>Hide-on-blur gated with <code>#[cfg(target_os = &quot;macos&quot;)]</code></li>
+</ul>
+<h3 id="linux-file-menu-final">Linux File menu (final)</h3><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Accelerator</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Close</td>
+<td><code>Ctrl+W</code></td>
+<td><code>window-close-requested</code> → hide</td>
+</tr>
+<tr>
+<td>Quit Gnomad Slate</td>
+<td><code>Ctrl+Q</code></td>
+<td><code>emit_quit_requested</code> → full exit</td>
+</tr>
+</tbody></table>
+<p>Removed <code>PredefinedMenuItem::quit</code> (bypassed our lifecycle).</p>
+<h3 id="packaging-tauriconfjson">Packaging (<code>tauri.conf.json</code>)</h3><ul>
+<li><code>mainBinaryName</code>: <code>gnomad-slate</code></li>
+<li>Linux RPM/DEB depends: <code>webkit2gtk4.1</code>, <code>libsoup3</code>, <code>gtk3</code>, <code>libappindicator-gtk3</code></li>
+<li>Desktop template: <code>bundle/linux/gnomad-slate.desktop.hbs</code> (<code>StartupWMClass=gnomad-slate</code>)</li>
+<li>Strict CSP (no inline scripts except <code>&#39;unsafe-inline&#39;</code> for styles)</li>
+</ul>
+<h3 id="filesystem">Filesystem</h3><ul>
+<li>Atomic vault/note writes (temp + rename)</li>
+<li>Data dir: <code>~/.local/share/gnomad-slate/</code> (<code>notes/</code>, <code>vault.enc</code>, <code>archive/</code>)</li>
+<li>Settings: <code>tauri-plugin-store</code> → app config dir <code>settings.json</code></li>
+</ul>
+<hr>
+<h2 id="frontend-changes-linux-gated">Frontend changes (Linux-gated)</h2><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Files</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Filename below toolbar</td>
+<td><code>App.tsx</code>, <code>App.css</code></td>
+<td><code>.linux-toolbar</code> layout; Edit/Split/Preview on row 1, filename row 2</td>
+</tr>
+<tr>
+<td>Line numbers toggle</td>
+<td><code>App.tsx</code>, View menu</td>
+<td>Persisted via plugin-store</td>
+</tr>
+<tr>
+<td>Help dialog</td>
+<td><code>src/content/linuxHelp.ts</code>, F1</td>
+<td>Sections: getting started, shortcuts, vault, clipboard, support <strong><a href="mailto:david@gnomadstudio.org">david@gnomadstudio.org</a></strong></td>
+</tr>
+<tr>
+<td>In-app dialogs</td>
+<td><code>AppMessageDialog.tsx</code></td>
+<td>Replaces <code>alert()</code> on Linux (WebKitGTK focus)</td>
+</tr>
+<tr>
+<td>Tooltips below buttons</td>
+<td><code>App.css</code></td>
+<td><code>tooltip-position: below</code> for mode buttons</td>
+</tr>
+<tr>
+<td>Version sync</td>
+<td>About dialog</td>
+<td><code>get_app_version_info</code> IPC — UI matches <code>package.json</code> / <code>Cargo.toml</code></td>
+</tr>
+<tr>
+<td>Close / quit</td>
+<td><code>App.tsx</code>, <code>ipc.ts</code></td>
+<td><code>onCloseRequested</code>, <code>window-close-requested</code>, <code>app-quit-requested</code> listeners</td>
+</tr>
+</tbody></table>
+<h3 id="dev-script">Dev script</h3><pre><code class="language-bash">npm run tauri:dev:x11   # GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri dev
+</code></pre>
+<hr>
+<h2 id="ai-code-reviews-consensus">AI code reviews (consensus)</h2><table>
+<thead>
+<tr>
+<th>Reviewer</th>
+<th>Model</th>
+<th>Verdict</th>
+<th>Key finding</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GLM 5.1</td>
+<td>P0</td>
+<td>PASS w/ fixes</td>
+<td>Quit race, <code>alert()</code> on Linux</td>
+</tr>
+<tr>
+<td>GLM 5.1</td>
+<td>P2</td>
+<td>PASS</td>
+<td>Tray, shortcuts, CSP</td>
+</tr>
+<tr>
+<td>Kimi K2.6</td>
+<td>NIM</td>
+<td>PASS w/ fixes</td>
+<td>Unify quit via <code>confirm_quit</code></td>
+</tr>
+<tr>
+<td>Qwen 3.5</td>
+<td>NIM</td>
+<td>PASS w/ fixes</td>
+<td>Same quit lifecycle</td>
+</tr>
+<tr>
+<td>Nemotron</td>
+<td>—</td>
+<td>PASS w/ notes</td>
+<td>Platform gating</td>
+</tr>
+<tr>
+<td>OpenRouter Qwen Coder</td>
+<td>—</td>
+<td><strong>Blocked</strong></td>
+<td>429 rate limit</td>
+</tr>
+</tbody></table>
+<p>Artifacts: <code>reviews/LINUX_REVIEW_*.md</code>, <code>reviews/LINUX_P0_REVIEW_glm-5.1.md</code>, <code>reviews/LINUX_P2_REVIEW_glm-5.1.md</code></p>
+<hr>
+<h2 id="local-build-amp-install-nobara">Local build &amp; install (Nobara)</h2><h3 id="dependencies">Dependencies</h3><pre><code class="language-bash">bash scripts/install-linux-deps.sh   # dnf: webkit2gtk4.1-devel, libsoup3-devel, etc.
+npm install
+npm run tauri:build                  # produces .rpm + .deb (AppImage may fail without linuxdeploy locally)
+</code></pre>
+<h3 id="install-rpm">Install RPM</h3><pre><code class="language-bash">sudo dnf install &quot;./src-tauri/target/release/bundle/rpm/Gnomad Slate-2.1.0-beta.3-1.x86_64.rpm&quot;
+</code></pre>
+<p>Binary: <code>/usr/bin/gnomad-slate</code><br>Desktop entry: <strong>Gnomad Slate</strong> in application menu</p>
+<h3 id="launch-workaround-wayland-webkit">Launch workaround (Wayland / WebKit)</h3><p>From agent shell, pure Wayland launch failed (<code>Gdk Error 71</code>). User desktop works with:</p>
+<pre><code class="language-bash">GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 gnomad-slate
+</code></pre>
+<p>Optional: wrap in <code>~/.local/bin/gnomad-slate</code> or patch <code>.desktop</code> <code>Exec=</code> line.</p>
+<h3 id="verify-quit">Verify quit</h3><pre><code class="language-bash">pgrep -a gnomad-slate          # after File → Close: still running (expected)
+# File → Quit or tray Quit:
+pgrep gnomad-slate || echo OK  # should print OK
+</code></pre>
+<hr>
+<h2 id="ci-release">CI / release</h2><table>
+<thead>
+<tr>
+<th>Workflow</th>
+<th>Trigger</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>build-test.yml</code></td>
+<td>PR / push</td>
+<td>✅ Green on <code>feat/linux-desktop</code></td>
+</tr>
+<tr>
+<td><code>release.yml</code></td>
+<td>tag <code>v*</code></td>
+<td>Fixed: <code>createUpdaterArtifacts: false</code> until <code>TAURI_SIGNING_PRIVATE_KEY</code> secret configured (beta.2 Linux job failed on missing signing key after successful RPM/DEB build)</td>
+</tr>
+</tbody></table>
+<p><strong>v2.1.0-beta.2</strong> release had macOS assets only (CI Linux failed at updater signing). <strong>v2.1.0-beta.3</strong> publishes Linux RPM/DEB (+ AppImage on Ubuntu runner).</p>
+<hr>
+<h2 id="known-limitations">Known limitations</h2><ol>
+<li><strong>AppImage</strong> — local build may fail without <code>linuxdeploy</code>; CI builds it on Ubuntu.</li>
+<li><strong>Auto-updater</strong> — Linux alpha; updater artifacts disabled in CI until signing secret is added.</li>
+<li><strong>Wayland</strong> — global shortcut registration is compositor-dependent; tray is fallback.</li>
+<li><strong>Hide vs quit</strong> — Close / X hides; only Quit exits (by design for summon launcher).</li>
+</ol>
+<hr>
+<h2 id="test-matrix-run-before-release">Test matrix (run before release)</h2><pre><code class="language-bash">npm test                    # Vitest (7 tests)
+cd src-tauri &amp;&amp; cargo test  # 15 Rust tests
+npm run build
+npm run tauri:build         # on Linux host
+</code></pre>
+<p>Manual: summon, tray, save-on-close prompt, vault lock on quit, Help F1, line numbers, theme persist.</p>
+<hr>
+<h2 id="references">References</h2><ul>
+<li><a href="LINUX_DESKTOP.md">LINUX_DESKTOP.md</a> — user-facing Linux guide</li>
+<li><a href="BUILD_PLATFORMS.md">BUILD_PLATFORMS.md</a> — cross-platform build</li>
+<li><a href="VAULT_SECURITY.md">VAULT_SECURITY.md</a> — vault crypto (unchanged semantics)</li>
+<li><a href="../CHANGELOG.md">CHANGELOG.md</a> — v2.1.0-beta.3 entry</li>
+</ul>
+<hr>
+<p>Built with ❤️ by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+
+      <footer class="doc-footer">
+        <p>Built with <span aria-label="love">❤️</span> by <a href="https://gnomadstudio.org">Gnomad Studio</a> 🦙</p>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const links = document.querySelectorAll(".sidebar a[href^='#']");
+    const sections = [...links].map((a) => document.querySelector(a.getAttribute("href")));
+    const onScroll = () => {
+      let cur = 0;
+      sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= 120) cur = i; });
+      links.forEach((l, i) => l.classList.toggle("active", i === cur));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>

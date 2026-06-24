@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   PRODUCT ROADMAP
-  Gnomad Slate · docs/ROADMAP.md
+  Gnomad Slate · docs\ROADMAP.md
 ════════════════════════════════════════════════════════════════════════
 
 PRODUCT ROADMAP — GNOMAD SLATE

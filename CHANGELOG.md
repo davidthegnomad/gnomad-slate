@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 
 ---
 
+## [1.0.0-alpha.1] — Windows — June 2026
+
+### Added — Windows port (`slate_win64/`)
+
+- Separate Windows codebase: native menu, system tray, `Alt+Space` summon, WebView2 bootstrap
+- Security P0: atomic vault writes, clipboard clear race fix, path validation, DOMPurify, CSP, async unlock
+- Frontend extractions: `Sidebar`, `EditorWorkstation`, palette command IDs
+- **17** Rust unit tests in `slate_win64/src-tauri`
+
+### Release
+
+- Windows `.msi` / `.exe` via CI (`slate_win64` tree) · alpha channel
+
+---
+
 ## [2.1.0-beta.4] — June 2026
 
 ### Fixed

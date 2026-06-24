@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════════════════
   RECOMMENDED DOCS
-  Gnomad Slate · docs/RECOMMENDED_DOCS.md
+  Gnomad Slate · docs\RECOMMENDED_DOCS.md
 ════════════════════════════════════════════════════════════════════════
 
 RECOMMENDED DOCS — GNOMAD SLATE
