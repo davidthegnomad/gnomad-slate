@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ---
 
+## [2.1.0-beta.5] — October 2026
+
+### Added
+
+- Loopback agent API at `http://127.0.0.1:47321` for notes, clipboard, vault, settings, and window controls. Bearer token, localhost only.
+
+### Fixed
+
+- Notepad paste inserts at the caret, and copy no longer loses the selection
+- Line numbers use the editor font and measured line heights, so wrapped lines stay aligned
+
+---
+
 ## [1.0.0-alpha.1] — Windows — June 2026
 
 ### Added — Windows port (`slate_win64/`)

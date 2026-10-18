@@ -72,8 +72,8 @@ jobs:
 
             | Platform | Version | Tree |
             |----------|---------|------|
-            | **macOS** | 2.1.0-beta.4 | repository root |
-            | **Linux** | 2.1.0-beta.4 | repository root |
+            | **macOS** | 2.1.0-beta.5 | repository root |
+            | **Linux** | 2.1.0-beta.5 | repository root |
             | **Windows** | 1.0.0-alpha.1 | `slate_win64/` |
 
             **Downloads:** [GitHub Pages](https://davidthegnomad.github.io/gnomad-slate/)
