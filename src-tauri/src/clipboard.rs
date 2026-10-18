@@ -57,6 +57,14 @@ impl ClipboardHistory {
     }
 }
 
+/// Read-only snapshot. Does not record history and does not replace the pasteboard.
+pub fn read_clipboard_text() -> Result<String, String> {
+    let mut clipboard = Clipboard::new().map_err(|e| format!("Clipboard unavailable: {}", e))?;
+    clipboard
+        .get_text()
+        .map_err(|e| format!("Failed to read clipboard: {}", e))
+}
+
 const POLL_ACTIVE_MS: u64 = 1000;
 const POLL_IDLE_MS: u64 = 3000;
 const IDLE_POLLS_BEFORE_SLOWDOWN: u32 = 5;
@@ -67,14 +75,6 @@ pub fn start_clipboard_monitor(
     filter_enabled: Arc<Mutex<bool>>,
 ) {
     thread::spawn(move || {
-        let mut clipboard = match Clipboard::new() {
-            Ok(c) => c,
-            Err(e) => {
-                tracing::error!("clipboard monitor: failed to initialize arboard: {e}");
-                return;
-            }
-        };
-
         let mut last_copied = String::new();
         let mut sleep_ms = POLL_ACTIVE_MS;
         let mut idle_polls = 0u32;
@@ -97,7 +97,9 @@ pub fn start_clipboard_monitor(
             idle_polls = 0;
             sleep_ms = POLL_ACTIVE_MS;
 
-            let Ok(text) = clipboard.get_text() else {
+            // Read with a short-lived clipboard and never write back. A long-lived
+            // pasteboard handle in this process was swallowing Cmd+V into the note.
+            let Ok(text) = read_clipboard_text() else {
                 continue;
             };
 

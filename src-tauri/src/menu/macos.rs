@@ -24,13 +24,16 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
             &PredefinedMenuItem::quit(app, None)?,
         ],
     )?;
+    // No key equivalent: Cmd+Z must reach the focused field.
+    let undo = MenuItem::with_id(app, "edit-undo", "Undo", true, None::<&str>)?;
+    let redo = MenuItem::with_id(app, "edit-redo", "Redo", true, None::<&str>)?;
     let edit_submenu = Submenu::with_items(
         app,
         "Edit",
         true,
         &[
-            &PredefinedMenuItem::undo(app, None)?,
-            &PredefinedMenuItem::redo(app, None)?,
+            &undo,
+            &redo,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::cut(app, None)?,
             &PredefinedMenuItem::copy(app, None)?,
@@ -52,6 +55,12 @@ pub fn handle_event(app: &AppHandle, event_id: &str) {
         }
         "check_updates" => {
             emit_to_frontend(app, "menu-check-updates");
+        }
+        "edit-undo" => {
+            emit_to_frontend(app, "menu-undo");
+        }
+        "edit-redo" => {
+            emit_to_frontend(app, "menu-redo");
         }
         _ => {}
     }

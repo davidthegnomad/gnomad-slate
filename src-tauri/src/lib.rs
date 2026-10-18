@@ -158,6 +158,12 @@ fn copy_text_to_clipboard(text: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn read_text_from_clipboard() -> Result<String, String> {
+    // Plain paste reads this directly. It must not go through clipboard history.
+    clipboard::read_clipboard_text()
+}
+
+#[tauri::command]
 fn write_note(
     title: String,
     content: String,
@@ -494,6 +500,7 @@ pub fn run() {
             prepare_for_quit,
             confirm_quit,
             copy_text_to_clipboard,
+            read_text_from_clipboard,
             get_clipboard_history,
             get_clipboard_filter_enabled,
             set_clipboard_filter_enabled,

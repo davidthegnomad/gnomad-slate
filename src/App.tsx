@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback, useMemo, type ButtonHTMLAttributes } from "react";
-import { invoke, listen, getPlatformWindow, quitDesktopApp, isTauri } from "./utils/ipc";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type ButtonHTMLAttributes, type CSSProperties } from "react";
+import { invoke, listen, getPlatformWindow, quitDesktopApp, LogicalSize, isTauri } from "./utils/ipc";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AboutDialog } from "./components/AboutDialog";
 import { AppMessageDialog } from "./components/AppMessageDialog";
@@ -9,6 +9,24 @@ import { useLinuxMenuBridge } from "./hooks/useLinuxMenuBridge";
 import { renderMarkdownToHtml } from "./utils/markdown";
 import { modKeyLabel, modShortcut, isMacOS } from "./utils/modKeyLabel";
 import { isLinuxDesktop } from "./utils/platform";
+import {
+  caretLineIndex,
+  editorEditAction,
+  emptyUndo,
+  gutterDigits,
+  insertText,
+  isClipboardHistoryShortcut,
+  logicalLines,
+  measureEditorLineHeights,
+  paletteCommandForShortcut,
+  recordUndo,
+  redoContent,
+  sameHeights,
+  selectedText,
+  undoContent,
+  type EditorSnapshot,
+  type UndoState,
+} from "./utils/notepadEditor";
 import { resolveTheme, type ThemePreference } from "./utils/theme";
 import { readSetting, writeSetting } from "./utils/settings";
 import "./App.css";
@@ -108,13 +126,24 @@ function App() {
   const [aboutAutoCheck, setAboutAutoCheck] = useState(false);
   const [appVersionLabel, setAppVersionLabel] = useState("v2.1 beta");
   const [isLinux, setIsLinux] = useState(() => isLinuxDesktop());
-  const [showLineNumbers, setShowLineNumbers] = useState(() => isLinuxDesktop());
+  const [showLineNumbers, setShowLineNumbers] = useState(true);
   const [closePromptOpen, setClosePromptOpen] = useState(false);
   const pendingWindowClose = useRef(false);
   const quittingRef = useRef(false);
   const settingsReady = useRef(false);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const undoRef = useRef<UndoState>(emptyUndo());
+  const pendingCaretRef = useRef<number | null>(null);
+  const performUndoRef = useRef<() => void>(() => {});
+  const performRedoRef = useRef<() => void>(() => {});
+  const showPaletteRef = useRef(false);
+  const showClipboardRef = useRef(false);
+  const runPaletteShortcutRef = useRef<(name: string) => void>(() => {});
+  const [lineHeights, setLineHeights] = useState<number[]>([]);
+  const [caretLine, setCaretLine] = useState(0);
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorTitleRef = useRef(editorTitle);
   const editorContentRef = useRef(editorContent);
@@ -237,11 +266,11 @@ function App() {
   }, [isLinux]);
 
   useEffect(() => {
-    if (!isLinux || !settingsReady.current) {
+    if (!settingsReady.current) {
       return;
     }
     void writeSetting("gnomad-line-numbers", String(showLineNumbers));
-  }, [isLinux, showLineNumbers]);
+  }, [showLineNumbers]);
 
   useEffect(() => {
     void invoke<AppVersionInfo>("get_app_version_info")
@@ -250,6 +279,35 @@ function App() {
     void invoke<string>("get_summon_shortcut_label")
       .then((label) => setSummonShortcutLabel(label))
       .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const unsubs: Array<Promise<() => void>> = [
+      listen("menu-undo", () => {
+        if (document.activeElement instanceof HTMLInputElement) return;
+        performUndoRef.current();
+      }),
+      listen("menu-redo", () => {
+        if (document.activeElement instanceof HTMLInputElement) return;
+        performRedoRef.current();
+      }),
+    ];
+
+    return () => {
+      void Promise.all(unsubs).then((handlers) => {
+        handlers.forEach((unlisten) => unlisten());
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      const win = getPlatformWindow();
+      const size = await win.innerSize();
+      if (size.width < 960) {
+        await win.setSize(new LogicalSize(1120, 640));
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -336,15 +394,21 @@ function App() {
 
   const selectNote = async (note: Note) => {
     await flushPendingSave();
+    undoRef.current = emptyUndo();
+    pendingCaretRef.current = null;
+    setCaretLine(0);
     setSelectedNote(note);
     setEditorTitle(note.title);
+    editorTitleRef.current = note.title;
     // Strip ephemeral comment if visual presentation
     let content = note.content;
     if (content.startsWith("<!-- ephemeral -->\n")) {
       content = content.replace("<!-- ephemeral -->\n", "");
     }
+    editorContentRef.current = content;
     setEditorContent(content);
     setIsEphemeral(note.is_ephemeral);
+    isEphemeralRef.current = note.is_ephemeral;
   };
 
   const showSaveFeedback = useCallback((message: string) => {
@@ -412,6 +476,9 @@ function App() {
     await saveNoteNow();
 
     const draftTitle = `Note_${new Date().toLocaleTimeString().replace(/\s/g, "_")}`;
+    undoRef.current = emptyUndo();
+    pendingCaretRef.current = null;
+    setCaretLine(0);
     setEditorTitle(draftTitle);
     setEditorContent("");
     setIsEphemeral(true);
@@ -490,14 +557,16 @@ function App() {
         return;
       }
 
-      if (!e.shiftKey && (e.key === "s" || e.key === "S")) {
+      if (!e.shiftKey && !e.altKey && (e.key === "s" || e.key === "S")) {
         e.preventDefault();
+        e.stopPropagation();
         void saveNoteNow({ promoteToSaved: isEphemeralRef.current });
         return;
       }
 
-      if (!e.shiftKey && (e.key === "n" || e.key === "N")) {
+      if (!e.shiftKey && !e.altKey && (e.key === "n" || e.key === "N")) {
         e.preventDefault();
+        e.stopPropagation();
         void createNewDraft();
       }
     },
@@ -582,6 +651,52 @@ function App() {
     };
   }, []);
 
+  const applyEditorValue = useCallback((next: string, caret: number | null) => {
+    const prev = editorContentRef.current;
+    const prevCaret = editorRef.current?.selectionStart ?? prev.length;
+    if (prev !== next) {
+      undoRef.current = recordUndo(undoRef.current, { value: prev, caret: prevCaret }, next);
+    }
+    editorContentRef.current = next;
+    setEditorContent(next);
+    if (caret != null) {
+      const clamped = Math.max(0, Math.min(caret, next.length));
+      pendingCaretRef.current = clamped;
+      setCaretLine(caretLineIndex(next, clamped));
+    }
+    scheduleSaveNote(next, editorTitleRef.current);
+  }, [scheduleSaveNote]);
+
+  const restoreSnapshot = useCallback((snapshot: EditorSnapshot) => {
+    const caret = Math.max(0, Math.min(snapshot.caret, snapshot.value.length));
+    editorContentRef.current = snapshot.value;
+    pendingCaretRef.current = caret;
+    setEditorContent(snapshot.value);
+    setCaretLine(caretLineIndex(snapshot.value, caret));
+    scheduleSaveNote(snapshot.value, editorTitleRef.current);
+  }, [scheduleSaveNote]);
+
+  const performUndo = useCallback(() => {
+    const current = editorContentRef.current;
+    const caret = editorRef.current?.selectionStart ?? current.length;
+    const result = undoContent(undoRef.current, { value: current, caret });
+    if (!result) return;
+    undoRef.current = result.state;
+    restoreSnapshot(result.snapshot);
+  }, [restoreSnapshot]);
+
+  const performRedo = useCallback(() => {
+    const current = editorContentRef.current;
+    const caret = editorRef.current?.selectionStart ?? current.length;
+    const result = redoContent(undoRef.current, { value: current, caret });
+    if (!result) return;
+    undoRef.current = result.state;
+    restoreSnapshot(result.snapshot);
+  }, [restoreSnapshot]);
+
+  performUndoRef.current = performUndo;
+  performRedoRef.current = performRedo;
+
   // --- Delete Note Function ---
   const deleteNote = async (filename: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -589,19 +704,19 @@ function App() {
       await invoke("delete_note", { filename });
       setNotes((prev) => prev.filter((n) => n.filename !== filename));
       if (selectedNote?.filename === filename) {
+        undoRef.current = emptyUndo();
+        pendingCaretRef.current = null;
+        editorTitleRef.current = "";
+        editorContentRef.current = "";
         setSelectedNote(null);
         setEditorTitle("");
         setEditorContent("");
+        setCaretLine(0);
       }
     } catch (e) {
       console.error(e);
     }
   };
-
-  const lineNumberRows = useMemo(() => {
-    const lineCount = Math.max(1, editorContent.split("\n").length);
-    return Array.from({ length: lineCount }, (_, index) => index + 1);
-  }, [editorContent]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -667,16 +782,15 @@ function App() {
     };
   }, [closeApp]);
 
+  showPaletteRef.current = showPalette;
+  showClipboardRef.current = showClipboard;
+
   // --- Keydown Event Handling for Universal Hotkeys ---
   useEffect(() => {
-    const isEditableTarget = (target: EventTarget | null): boolean => {
-      if (!(target instanceof HTMLElement)) return false;
-      const tag = target.tagName;
-      return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
-    };
-
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      const inTextarea = target?.tagName === "TEXTAREA";
 
       // F1: Help (Linux)
       if (isLinux && e.key === "F1") {
@@ -692,8 +806,32 @@ function App() {
         return;
       }
 
-      // ⌘S: Save current note (promotes scratchpad drafts to Saved)
-      if (isCmdOrCtrl && !e.shiftKey && (e.key === "s" || e.key === "S")) {
+      // Shift+V opens history. Plain V is never preventDefault'd here.
+      if (isClipboardHistoryShortcut(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+        void loadClipboardHistory();
+        setSelectedClipIdx(0);
+        setShowClipboard((prev) => !prev);
+        setShowPalette(false);
+        return;
+      }
+
+      const edit = editorEditAction(e);
+      if (edit) {
+        if (inTextarea && (edit === "undo" || edit === "redo")) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (edit === "undo") performUndoRef.current();
+          else performRedoRef.current();
+        } else if (inTextarea && edit === "selectAll" && target instanceof HTMLTextAreaElement) {
+          e.preventDefault();
+          target.select();
+        }
+        return;
+      }
+
+      if (isCmdOrCtrl && !e.shiftKey && !e.altKey && (e.key === "s" || e.key === "S")) {
         e.preventDefault();
         e.stopPropagation();
         if (activeTabRef.current !== "secrets") {
@@ -702,8 +840,7 @@ function App() {
         return;
       }
 
-      // ⌘N: New scratchpad draft
-      if (isCmdOrCtrl && !e.shiftKey && (e.key === "n" || e.key === "N")) {
+      if (isCmdOrCtrl && !e.shiftKey && !e.altKey && (e.key === "n" || e.key === "N")) {
         e.preventDefault();
         e.stopPropagation();
         if (activeTabRef.current !== "secrets") {
@@ -712,27 +849,22 @@ function App() {
         return;
       }
 
-      // ⌘P: Open Command Palette (not while typing in a field — allow select-all etc.)
-      if (
-        isCmdOrCtrl &&
-        e.key.toLowerCase() === "p" &&
-        !isEditableTarget(e.target)
-      ) {
+      if (isCmdOrCtrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") {
         e.preventDefault();
+        e.stopPropagation();
         setPaletteQuery("");
         setSelectedPaletteIdx(0);
         setShowPalette((prev) => !prev);
         setShowClipboard(false);
+        return;
       }
 
-      // ⌘⇧V: Open Clipboard History Capsule
-      if (isCmdOrCtrl && e.shiftKey && e.key.toLowerCase() === "v") {
-        e.preventDefault();
-        loadClipboardHistory();
-        setSelectedClipIdx(0);
-        setShowClipboard((prev) => !prev);
-        setShowPalette(false);
-      }
+      if (showPaletteRef.current || showClipboardRef.current) return;
+      const command = paletteCommandForShortcut(e);
+      if (!command) return;
+      if (command !== "Lock / Unlock Secret Vault" && activeTabRef.current === "secrets") return;
+      e.preventDefault();
+      runPaletteShortcutRef.current(command);
     };
 
     document.addEventListener("keydown", handleKeyDown);
@@ -768,18 +900,12 @@ function App() {
   };
 
   const handlePasteFromClipboard = (text: string) => {
-    // Inject text at editor cursor
-    if (editorRef.current) {
-      const textarea = editorRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const val = textarea.value;
-      const updatedVal = val.substring(0, start) + text + val.substring(end);
-      setEditorContent(updatedVal);
-      saveActiveNote(updatedVal);
-    } else {
-      setEditorContent((prev) => prev + "\n" + text);
-    }
+    const base = editorContentRef.current;
+    const textarea = editorRef.current;
+    const start = textarea?.selectionStart ?? base.length;
+    const end = textarea?.selectionEnd ?? start;
+    const result = insertText(base, start, end, text);
+    applyEditorValue(result.value, result.caret);
     setShowClipboard(false);
   };
 
@@ -802,6 +928,64 @@ function App() {
     setAboutAutoCheck,
     setShowAbout,
   });
+  const writeSystemClipboard = (text: string) => {
+    if (!text || !isTauri()) return;
+    void invoke("copy_text_to_clipboard", { text }).catch(() => undefined);
+  };
+
+  const onEditorCopy = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const textarea = event.currentTarget;
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? start;
+    const selected = selectedText(textarea.value, start, end);
+    if (!selected || !event.clipboardData) return;
+    event.clipboardData.setData("text/plain", selected);
+    event.preventDefault();
+    const restore = () => textarea.setSelectionRange(start, end);
+    restore();
+    requestAnimationFrame(restore);
+    writeSystemClipboard(selected);
+  };
+
+  const onEditorCut = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const textarea = event.currentTarget;
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? start;
+    const selected = selectedText(textarea.value, start, end);
+    if (!selected || !event.clipboardData) return;
+    event.clipboardData.setData("text/plain", selected);
+    event.preventDefault();
+    const result = insertText(textarea.value, start, end, "");
+    applyEditorValue(result.value, result.caret);
+    writeSystemClipboard(selected);
+  };
+
+  const onEditorPaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const textarea = event.currentTarget;
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? start;
+    const pasted = event.clipboardData?.getData("text/plain") ?? "";
+    if (pasted) {
+      event.preventDefault();
+      const result = insertText(textarea.value, start, end, pasted);
+      applyEditorValue(result.value, result.caret);
+      return;
+    }
+    if (!isTauri()) return;
+    event.preventDefault();
+    const snapshot = textarea.value;
+    void invoke<string>("read_text_from_clipboard")
+      .then((text) => {
+        if (!text) return;
+        const base = editorContentRef.current;
+        const unchanged = base === snapshot;
+        const from = unchanged ? start : (editorRef.current?.selectionStart ?? base.length);
+        const to = unchanged ? end : (editorRef.current?.selectionEnd ?? from);
+        const result = insertText(base, from, to, text);
+        applyEditorValue(result.value, result.caret);
+      })
+      .catch(() => undefined);
+  };
 
   // --- Command Palette Action Executions ---
   const executeCommand = async (commandName: string) => {
@@ -819,18 +1003,16 @@ function App() {
         break;
       case "Format JSON":
         try {
-          const parsed = JSON.parse(editorContent);
+          const parsed = JSON.parse(editorContentRef.current);
           const formatted = JSON.stringify(parsed, null, 2);
-          setEditorContent(formatted);
-          saveActiveNote(formatted);
+          applyEditorValue(formatted, 0);
         } catch (err) {
           showAppMessage("Error: Active note content does not contain valid JSON.");
         }
         break;
 
       case "Prettify Markdown": {
-        // Basic markdown formatting cleanups
-        let prettified = editorContent
+        const prettified = editorContentRef.current
           .split("\n")
           .map((line) => {
             if (line.startsWith("-") && !line.startsWith("- ")) {
@@ -839,13 +1021,12 @@ function App() {
             return line;
           })
           .join("\n");
-        setEditorContent(prettified);
-        saveActiveNote(prettified);
+        applyEditorValue(prettified, 0);
         break;
       }
 
       case "Copy as Raw HTML": {
-        const html = renderMarkdownToHtml(editorContent);
+        const html = renderMarkdownToHtml(editorContentRef.current);
         try {
           await invoke("copy_text_to_clipboard", { text: html });
           showAppMessage("Markdown compiled to HTML and copied to clipboard.");
@@ -859,19 +1040,55 @@ function App() {
       case "Append to Daily Note": {
         const today = new Date().toISOString().split("T")[0];
         const title = `Daily_Note_${today}`;
-        const newContent = commandName === "Create Daily Note" 
-          ? `## Log: ${today}\n\n*   Active drafting logs...` 
-          : `\n\n*   [Logged at ${new Date().toLocaleTimeString()}]: ${editorContent}`;
+        const existing = notes.find((n) => n.title === title);
+        const stripEphemeral = (content: string) =>
+          content.startsWith("<!-- ephemeral -->\n")
+            ? content.replace("<!-- ephemeral -->\n", "")
+            : content;
+        const existingBody = existing ? stripEphemeral(existing.content) : "";
+        let newContent = existingBody;
+        if (commandName === "Append to Daily Note") {
+          const source = editorContentRef.current;
+          const textarea = editorRef.current;
+          const selected =
+            textarea && textarea.selectionStart !== textarea.selectionEnd
+              ? source.slice(textarea.selectionStart, textarea.selectionEnd)
+              : source;
+          const base = existingBody.trim()
+            ? existingBody.replace(/\s*$/, "")
+            : `## Log: ${today}`;
+          newContent = `${base}\n\n*   [Logged at ${new Date().toLocaleTimeString()}]: ${selected}`;
+        } else if (!existingBody.trim()) {
+          newContent = `## Log: ${today}\n\n*   Active drafting logs...`;
+        }
 
         try {
-          await invoke("write_note", {
+          const saved = await invoke<Note>("write_note", {
             title,
             content: newContent,
             isEphemeral: false,
-            previousFilename: null,
+            previousFilename: existing?.filename ?? null,
           });
-          loadNotes();
-          showAppMessage(`Appended to ${title}!`);
+          const body = stripEphemeral(saved.content);
+          undoRef.current = emptyUndo();
+          pendingCaretRef.current = null;
+          setActiveTab("vault");
+          activeTabRef.current = "vault";
+          setNotes((prev) => {
+            const filtered = prev.filter(
+              (n) => n.filename !== saved.filename && n.filename !== existing?.filename
+            );
+            return [saved, ...filtered];
+          });
+          setSelectedNote(saved);
+          setEditorTitle(saved.title);
+          editorTitleRef.current = saved.title;
+          editorContentRef.current = body;
+          setEditorContent(body);
+          setIsEphemeral(false);
+          isEphemeralRef.current = false;
+          setCaretLine(0);
+          showSaveFeedback(commandName === "Append to Daily Note" ? "Appended to daily note" : "Daily note ready");
         } catch (e) {
           console.error(e);
         }
@@ -887,6 +1104,46 @@ function App() {
         break;
     }
   };
+
+  runPaletteShortcutRef.current = (name: string) => {
+    void executeCommand(name);
+  };
+
+  const lines = useMemo(() => logicalLines(editorContent), [editorContent]);
+
+  useLayoutEffect(() => {
+    const textarea = editorRef.current;
+    const caret = pendingCaretRef.current;
+    if (!textarea || caret == null) return;
+    const clamped = Math.max(0, Math.min(caret, textarea.value.length));
+    textarea.setSelectionRange(clamped, clamped);
+    pendingCaretRef.current = null;
+  }, [editorContent]);
+
+  useLayoutEffect(() => {
+    const textarea = editorRef.current;
+    const measure = measureRef.current;
+    const gutter = gutterRef.current;
+    if (!textarea || !measure || !gutter) return;
+
+    let cancelled = false;
+    const apply = () => {
+      if (cancelled) return;
+      const heights = measureEditorLineHeights(textarea, measure);
+      if (heights.length === 0 || heights.every((height) => height < 1)) return;
+      setLineHeights((prev) => (sameHeights(prev, heights) ? prev : heights));
+      gutter.scrollTop = textarea.scrollTop;
+    };
+
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(textarea);
+    if (document.fonts) void document.fonts.ready.then(apply);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [editorContent, editorView, showLineNumbers]);
 
   // --- Secure Vault-X Database Operations ---
   const handleInitVault = async () => {
@@ -1413,6 +1670,14 @@ function App() {
                       </TipButton>
                     </div>
                     <TipButton
+                      className={`action-btn ${showLineNumbers ? "active-glow" : ""}`}
+                      tipBelow
+                      tip="Show or hide line numbers in the editor"
+                      onClick={() => setShowLineNumbers((prev) => !prev)}
+                    >
+                      # Lines
+                    </TipButton>
+                    <TipButton
                       className={`action-btn ${isEphemeral ? "active-glow" : ""}`}
                       tipBelow
                       tip={
@@ -1445,12 +1710,19 @@ function App() {
               className={`editor-body ${editorView === "split" ? "editor-body-split" : ""}`}
             >
               {(editorView === "edit" || editorView === "split") && (
-                <div className={`editor-input-wrap${isLinux && showLineNumbers ? " editor-input-wrap-lined" : ""}`}>
-                  {isLinux && showLineNumbers && (
-                    <div className="line-numbers-gutter" aria-hidden="true">
-                      {lineNumberRows.map((line) => (
-                        <div key={line} className="line-number">
-                          {line}
+                <div
+                  className={`editor-input-wrap${showLineNumbers ? " editor-input-wrap-lined" : ""}`}
+                  style={{ "--gutter-digits": String(gutterDigits(lines.length)) } as CSSProperties}
+                >
+                  {showLineNumbers && (
+                    <div className="line-numbers-gutter" ref={gutterRef} aria-hidden="true">
+                      {lines.map((_, index) => (
+                        <div
+                          key={index}
+                          className={`line-number${index === caretLine ? " is-current" : ""}`}
+                          style={lineHeights[index] ? { height: `${lineHeights[index]}px` } : undefined}
+                        >
+                          {index + 1}
                         </div>
                       ))}
                     </div>
@@ -1458,28 +1730,41 @@ function App() {
                   <textarea
                     ref={editorRef}
                     className="text-textarea"
-                    placeholder={
-                      isLinux
-                        ? `Start typing in Markdown… ${modShortcut("S")} save · ${modShortcut("N")} new draft · ${modShortcut("P")} palette`
-                        : `Start typing in Markdown… ${modShortcut("S")} save · ${modShortcut("N")} new draft · ${modShortcut("P")} palette`
-                    }
+                    wrap="soft"
+                    spellCheck
+                    placeholder={`Start typing in Markdown… ${modShortcut("S")} save · ${modShortcut("N")} new draft · ${modShortcut("P")} palette`}
                     value={editorContent}
                     onKeyDown={handleEditorShortcut}
-                    onChange={(e) => {
-                      setEditorContent(e.target.value);
-                      scheduleSaveNote(e.target.value, editorTitle);
+                    onCopy={onEditorCopy}
+                    onCut={onEditorCut}
+                    onPaste={onEditorPaste}
+                    onSelect={(e) => setCaretLine(caretLineIndex(e.currentTarget.value, e.currentTarget.selectionStart ?? 0))}
+                    onScroll={(e) => {
+                      if (gutterRef.current) gutterRef.current.scrollTop = e.currentTarget.scrollTop;
                     }}
-                    onScroll={
-                      isLinux && showLineNumbers
-                        ? (e) => {
-                            const gutter = e.currentTarget.previousElementSibling;
-                            if (gutter instanceof HTMLElement) {
-                              gutter.scrollTop = e.currentTarget.scrollTop;
-                            }
-                          }
-                        : undefined
-                    }
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      const prev = editorContentRef.current;
+                      if (prev !== next) {
+                        undoRef.current = recordUndo(
+                          undoRef.current,
+                          { value: prev, caret: e.target.selectionStart ?? next.length },
+                          next
+                        );
+                      }
+                      editorContentRef.current = next;
+                      setEditorContent(next);
+                      scheduleSaveNote(next, editorTitleRef.current);
+                      setCaretLine(caretLineIndex(next, e.target.selectionStart ?? 0));
+                    }}
                   />
+                  <div className="line-measure" ref={measureRef} aria-hidden="true">
+                    {lines.map((line, index) => (
+                      <div key={index} data-line="" className="line-measure-row">
+                        {line.length > 0 ? line : "\u00a0"}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {(editorView === "preview" || editorView === "split") && (

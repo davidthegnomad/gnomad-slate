@@ -349,6 +349,7 @@ body {
 .editor-body {
   flex: 1;
   display: flex;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -356,7 +357,7 @@ body {
   flex-direction: row;
 }
 
-.editor-body-split .text-textarea,
+.editor-body-split .editor-input-wrap,
 .editor-body-split .markdown-preview {
   flex: 1;
   width: 50%;
@@ -364,12 +365,6 @@ body {
 }
 
 .editor-body-split .editor-input-wrap {
-  flex: 1;
-  width: 50%;
-  min-width: 0;
-}
-
-.editor-body-split .text-textarea {
   border-right: 1px solid var(--border-color);
 }
 
@@ -440,17 +435,83 @@ body {
   accent-color: var(--accent-color);
 }
 
+.editor-input-wrap {
+  --editor-font-size: 14px;
+  --editor-line-height: 1.6;
+  --editor-pad-y: 24px;
+  --editor-pad-x: 24px;
+  --editor-font: var(--font-sans);
+  --gutter-digits: 2;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.line-numbers-gutter {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: calc(var(--gutter-digits) * 1ch + 16px);
+  overflow: hidden;
+  padding: var(--editor-pad-y) 8px;
+  font-family: var(--editor-font);
+  font-size: var(--editor-font-size);
+  line-height: var(--editor-line-height);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  text-align: right;
+  user-select: none;
+  -webkit-user-select: none;
+  border-right: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.line-number {
+  display: block;
+  min-height: calc(var(--editor-font-size) * var(--editor-line-height));
+  box-sizing: border-box;
+}
+
+.line-number.is-current {
+  color: var(--text-main);
+}
+
+.line-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.line-measure-row {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
 .text-textarea {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
   background: transparent;
   border: none;
   resize: none;
   outline: none;
-  padding: 24px;
+  padding: var(--editor-pad-y) var(--editor-pad-x);
   color: var(--text-main);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.6;
+  font-family: var(--editor-font);
+  font-size: var(--editor-font-size);
+  line-height: var(--editor-line-height);
+  tab-size: 4;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  overflow: auto;
   user-select: text;
   -webkit-user-select: text;
 }
@@ -899,24 +960,6 @@ body {
 .editor-input-wrap-lined .text-textarea {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
-}
-
-.line-numbers-gutter {
-  overflow: hidden;
-  flex: 0 0 auto;
-  padding: 24px 8px 24px 12px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--text-muted);
-  text-align: right;
-  user-select: none;
-  border-right: 1px solid var(--border-color);
-  background: rgba(0, 0, 0, 0.15);
-}
-
-.line-number {
-  height: 1.6em;
 }
 
 .help-dialog {
