@@ -1,3 +1,4 @@
+mod agent_api;
 pub mod biometrics;
 pub mod clipboard;
 pub mod clipboard_filter;
@@ -15,12 +16,12 @@ pub mod shortcuts;
 pub mod unlock_limiter;
 pub mod vault_session;
 
+use arboard::Clipboard;
 use serde::Serialize;
-use std::sync::atomic::{AtomicBool, Ordering};
 #[cfg(target_os = "macos")]
 use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use arboard::Clipboard;
 use tauri::{AppHandle, Emitter, Manager, RunEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
 
@@ -29,6 +30,7 @@ use crate::filesystem::Note;
 use crate::unlock_limiter::UnlockRateLimiterState;
 use crate::vault_session::{SecretMeta, VaultSessionState};
 
+#[derive(Clone)]
 pub struct AppState {
     pub clipboard_history: Arc<Mutex<ClipboardHistory>>,
     pub clipboard_filter_enabled: Arc<Mutex<bool>>,
@@ -80,14 +82,12 @@ fn write_encrypted_vault(data: &[u8]) -> Result<(), String> {
 }
 
 fn persist_vault(state: &AppState) -> Result<(), String> {
-    let encrypted = vault_session::with_session(&state.vault_session, |session| {
-        session.encrypt_secrets()
-    })?;
+    let encrypted =
+        vault_session::with_session(&state.vault_session, |session| session.encrypt_secrets())?;
     write_encrypted_vault(&encrypted)
 }
 
-#[tauri::command]
-fn get_clipboard_history(state: tauri::State<AppState>) -> Vec<ClipboardEntry> {
+pub(crate) fn clipboard_history_entries(state: &AppState) -> Vec<ClipboardEntry> {
     if let Ok(hist) = state.clipboard_history.lock() {
         hist.get_entries()
     } else {
@@ -95,8 +95,7 @@ fn get_clipboard_history(state: tauri::State<AppState>) -> Vec<ClipboardEntry> {
     }
 }
 
-#[tauri::command]
-fn get_clipboard_filter_enabled(state: tauri::State<AppState>) -> bool {
+pub(crate) fn clipboard_filter_enabled(state: &AppState) -> bool {
     state
         .clipboard_filter_enabled
         .lock()
@@ -104,11 +103,25 @@ fn get_clipboard_filter_enabled(state: tauri::State<AppState>) -> bool {
         .unwrap_or(true)
 }
 
-#[tauri::command]
-fn set_clipboard_filter_enabled(enabled: bool, state: tauri::State<AppState>) {
+pub(crate) fn set_clipboard_filter_flag(state: &AppState, enabled: bool) {
     if let Ok(mut guard) = state.clipboard_filter_enabled.lock() {
         *guard = enabled;
     }
+}
+
+#[tauri::command]
+fn get_clipboard_history(state: tauri::State<AppState>) -> Vec<ClipboardEntry> {
+    clipboard_history_entries(&state)
+}
+
+#[tauri::command]
+fn get_clipboard_filter_enabled(state: tauri::State<AppState>) -> bool {
+    clipboard_filter_enabled(&state)
+}
+
+#[tauri::command]
+fn set_clipboard_filter_enabled(enabled: bool, state: tauri::State<AppState>) {
+    set_clipboard_filter_flag(&state, enabled);
 }
 
 #[tauri::command]
@@ -126,20 +139,17 @@ fn get_summon_shortcut_label() -> String {
     shortcuts::summon_shortcut().to_string()
 }
 
-/// Legacy command — prefer `confirm_quit` which locks the vault and exits atomically.
-#[tauri::command]
-fn prepare_for_quit(state: tauri::State<AppState>) {
+pub(crate) fn lock_vault_session(state: &AppState) {
     vault_session::close_session(&state.vault_session);
 }
 
-/// Called by the frontend after save/cleanup. Backend locks vault and exits (no window.destroy IPC race).
-#[tauri::command]
-fn confirm_quit(app: AppHandle, state: tauri::State<AppState>) {
+/// Locks the vault and exits. Same path as the `confirm_quit` command.
+pub(crate) fn perform_confirm_quit(app: &AppHandle, state: &AppState) {
     if QUIT_IN_PROGRESS.swap(true, Ordering::SeqCst) {
         tracing::debug!("confirm_quit ignored — already quitting");
         return;
     }
-    vault_session::close_session(&state.vault_session);
+    lock_vault_session(state);
     tracing::info!("application exit confirmed");
     app.exit(0);
     // Global shortcut plugin can keep the event loop alive after app.exit on Linux.
@@ -147,10 +157,21 @@ fn confirm_quit(app: AppHandle, state: tauri::State<AppState>) {
     std::process::exit(0);
 }
 
+/// Legacy command — prefer `confirm_quit` which locks the vault and exits atomically.
+#[tauri::command]
+fn prepare_for_quit(state: tauri::State<AppState>) {
+    lock_vault_session(&state);
+}
+
+/// Called by the frontend after save/cleanup. Backend locks vault and exits (no window.destroy IPC race).
+#[tauri::command]
+fn confirm_quit(app: AppHandle, state: tauri::State<AppState>) {
+    perform_confirm_quit(&app, &state);
+}
+
 #[tauri::command]
 fn copy_text_to_clipboard(text: String) -> Result<(), String> {
-    let mut clipboard = Clipboard::new()
-        .map_err(|e| format!("Clipboard unavailable: {}", e))?;
+    let mut clipboard = Clipboard::new().map_err(|e| format!("Clipboard unavailable: {}", e))?;
     clipboard
         .set_text(text)
         .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
@@ -170,12 +191,7 @@ fn write_note(
     is_ephemeral: bool,
     previous_filename: Option<String>,
 ) -> Result<Note, String> {
-    filesystem::write_note(
-        &title,
-        &content,
-        is_ephemeral,
-        previous_filename.as_deref(),
-    )
+    filesystem::write_note(&title, &content, is_ephemeral, previous_filename.as_deref())
 }
 
 #[tauri::command]
@@ -193,25 +209,22 @@ fn is_vault_initialized() -> bool {
     biometrics::is_vault_initialized()
 }
 
-#[tauri::command]
-fn is_vault_unlocked(state: tauri::State<AppState>) -> bool {
+pub(crate) fn vault_is_unlocked(state: &AppState) -> bool {
     vault_session::is_unlocked(&state.vault_session)
 }
 
-#[tauri::command]
-fn initialize_vault(password: String, state: tauri::State<AppState>) -> Result<(), String> {
-    biometrics::validate_master_password(&password)?;
-    biometrics::set_master_password(&password)?;
-    vault_session::open_session_with_json(&state.vault_session, &password, b"[]")?;
-    persist_vault(&state)?;
+pub(crate) fn initialize_vault_with(password: &str, state: &AppState) -> Result<(), String> {
+    biometrics::validate_master_password(password)?;
+    biometrics::set_master_password(password)?;
+    vault_session::open_session_with_json(&state.vault_session, password, b"[]")?;
+    persist_vault(state)?;
     if let Ok(mut limiter) = state.unlock_limiter.lock() {
         limiter.record_success();
     }
     Ok(())
 }
 
-#[tauri::command]
-fn unlock_vault(password: String, state: tauri::State<AppState>) -> Result<(), String> {
+pub(crate) fn unlock_vault_with(password: &str, state: &AppState) -> Result<(), String> {
     {
         let mut limiter = state
             .unlock_limiter
@@ -240,13 +253,12 @@ fn unlock_vault(password: String, state: tauri::State<AppState>) -> Result<(), S
         crypto::decrypt_vault(&encrypted_data, &password)?
     };
 
-    let was_legacy =
-        !encrypted_data.is_empty() && crypto::is_legacy_vault_format(&encrypted_data);
+    let was_legacy = !encrypted_data.is_empty() && crypto::is_legacy_vault_format(&encrypted_data);
 
-    vault_session::open_session_with_json(&state.vault_session, &password, &decrypted_bytes)?;
+    vault_session::open_session_with_json(&state.vault_session, password, &decrypted_bytes)?;
 
     if was_legacy {
-        persist_vault(&state)?;
+        persist_vault(state)?;
     }
 
     if let Ok(mut limiter) = state.unlock_limiter.lock() {
@@ -257,32 +269,41 @@ fn unlock_vault(password: String, state: tauri::State<AppState>) -> Result<(), S
 }
 
 #[tauri::command]
-fn lock_vault(state: tauri::State<AppState>) {
-    vault_session::close_session(&state.vault_session);
+fn is_vault_unlocked(state: tauri::State<AppState>) -> bool {
+    vault_is_unlocked(&state)
 }
 
 #[tauri::command]
-fn list_secret_metadata(state: tauri::State<AppState>) -> Result<Vec<SecretMeta>, String> {
+fn initialize_vault(password: String, state: tauri::State<AppState>) -> Result<(), String> {
+    initialize_vault_with(&password, &state)
+}
+
+#[tauri::command]
+fn unlock_vault(password: String, state: tauri::State<AppState>) -> Result<(), String> {
+    unlock_vault_with(&password, &state)
+}
+
+#[tauri::command]
+fn lock_vault(state: tauri::State<AppState>) {
+    lock_vault_session(&state);
+}
+
+pub(crate) fn list_secret_metadata_for(state: &AppState) -> Result<Vec<SecretMeta>, String> {
     vault_session::with_session(&state.vault_session, |session| Ok(session.list_metadata()))
 }
 
-#[tauri::command]
-fn reveal_secret_value(index: usize, state: tauri::State<AppState>) -> Result<String, String> {
-    let value = vault_session::with_session(&state.vault_session, |session| {
-        session.get_value(index)
-    })?;
+pub(crate) fn reveal_secret_for(index: usize, state: &AppState) -> Result<String, String> {
+    let value =
+        vault_session::with_session(&state.vault_session, |session| session.get_value(index))?;
     // IPC requires an owned String; caller (UI) should clear display on hide/lock.
     Ok(value.to_string())
 }
 
-#[tauri::command]
-fn copy_secret_to_clipboard(index: usize, state: tauri::State<AppState>) -> Result<(), String> {
-    let value = vault_session::with_session(&state.vault_session, |session| {
-        session.get_value(index)
-    })?;
+pub(crate) fn copy_secret_for(index: usize, state: &AppState) -> Result<(), String> {
+    let value =
+        vault_session::with_session(&state.vault_session, |session| session.get_value(index))?;
 
-    let mut clipboard = Clipboard::new()
-        .map_err(|e| format!("Clipboard unavailable: {}", e))?;
+    let mut clipboard = Clipboard::new().map_err(|e| format!("Clipboard unavailable: {}", e))?;
     clipboard
         .set_text(value.to_string())
         .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
@@ -292,24 +313,50 @@ fn copy_secret_to_clipboard(index: usize, state: tauri::State<AppState>) -> Resu
 }
 
 #[tauri::command]
+fn list_secret_metadata(state: tauri::State<AppState>) -> Result<Vec<SecretMeta>, String> {
+    list_secret_metadata_for(&state)
+}
+
+#[tauri::command]
+fn reveal_secret_value(index: usize, state: tauri::State<AppState>) -> Result<String, String> {
+    reveal_secret_for(index, &state)
+}
+
+#[tauri::command]
+fn copy_secret_to_clipboard(index: usize, state: tauri::State<AppState>) -> Result<(), String> {
+    copy_secret_for(index, &state)
+}
+
+pub(crate) fn add_secret_for(
+    name: String,
+    path: String,
+    value: String,
+    state: &AppState,
+) -> Result<(), String> {
+    vault_session::with_session_mut(&state.vault_session, |session| {
+        session.add_secret(name, path, value)
+    })?;
+    persist_vault(state)
+}
+
+pub(crate) fn delete_secret_for(index: usize, state: &AppState) -> Result<(), String> {
+    vault_session::with_session_mut(&state.vault_session, |session| session.delete_secret(index))?;
+    persist_vault(state)
+}
+
+#[tauri::command]
 fn add_secret(
     name: String,
     path: String,
     value: String,
     state: tauri::State<AppState>,
 ) -> Result<(), String> {
-    vault_session::with_session_mut(&state.vault_session, |session| {
-        session.add_secret(name, path, value)
-    })?;
-    persist_vault(&state)
+    add_secret_for(name, path, value, &state)
 }
 
 #[tauri::command]
 fn delete_secret(index: usize, state: tauri::State<AppState>) -> Result<(), String> {
-    vault_session::with_session_mut(&state.vault_session, |session| {
-        session.delete_secret(index)
-    })?;
-    persist_vault(&state)
+    delete_secret_for(index, &state)
 }
 
 static INTENTIONALLY_HIDDEN: AtomicBool = AtomicBool::new(false);
@@ -350,7 +397,7 @@ pub(crate) fn menu_hide_main_window(app: &AppHandle) {
     hide_main_window(app, true);
 }
 
-fn toggle_window(app: &AppHandle) {
+pub(crate) fn toggle_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         match window.is_visible() {
             Ok(true) => hide_main_window(app, true),
@@ -407,8 +454,9 @@ fn attach_hide_on_blur(window: &tauri::WebviewWindow) {
     let hide_generation = Arc::new(AtomicU64::new(0));
     let window_for_events = window.clone();
 
-    window_for_events.clone().on_window_event(move |event| {
-        match event {
+    window_for_events
+        .clone()
+        .on_window_event(move |event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
                 api.prevent_close();
                 let _ = window_for_events.emit("window-close-requested", ());
@@ -432,8 +480,7 @@ fn attach_hide_on_blur(window: &tauri::WebviewWindow) {
                 hide_generation.fetch_add(1, Ordering::SeqCst);
             }
             _ => {}
-        }
-    });
+        });
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -447,10 +494,7 @@ pub fn run() {
 
     let clipboard_history = Arc::new(Mutex::new(ClipboardHistory::new(15)));
     let clipboard_filter_enabled = Arc::new(Mutex::new(true));
-    clipboard::start_clipboard_monitor(
-        clipboard_history.clone(),
-        clipboard_filter_enabled.clone(),
-    );
+    clipboard::start_clipboard_monitor(clipboard_history.clone(), clipboard_filter_enabled.clone());
 
     let vault_session = Arc::new(Mutex::new(None));
     let unlock_limiter = Arc::new(Mutex::new(unlock_limiter::UnlockRateLimiter::new()));
@@ -487,6 +531,13 @@ pub fn run() {
                 attach_hide_on_blur(&window);
                 #[cfg(not(target_os = "macos"))]
                 attach_window_close_handler(&window);
+            }
+
+            if let Err(e) = agent_api::start(
+                app.handle().clone(),
+                app.state::<AppState>().inner().clone(),
+            ) {
+                tracing::error!("agent api not started: {e}");
             }
 
             Ok(())
