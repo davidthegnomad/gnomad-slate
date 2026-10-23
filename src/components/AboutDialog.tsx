@@ -64,9 +64,7 @@ export function AboutDialog({
   }
 
   const channelNote =
-    versionInfo?.channel === "alpha"
-      ? "Linux and Windows builds are alpha — updates ship after platform QA."
-      : "macOS beta channel — check for updates anytime.";
+    "Check for Updates installs the newest macOS or Linux release. Windows still installs from the download page.";
 
   return (
     <div className="overlay-backdrop" onClick={onClose}>

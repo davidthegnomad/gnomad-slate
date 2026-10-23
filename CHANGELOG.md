@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ---
 
+## [2.1.0-beta.7] — October 2026
+
+### Added
+
+- Check for Updates on macOS and Linux downloads and installs the newest release. The menu item and the About dialog both use it.
+
+---
+
 ## [2.1.0-beta.6] — October 2026
 
 ### Added
