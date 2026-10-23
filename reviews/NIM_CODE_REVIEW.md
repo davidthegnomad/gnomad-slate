@@ -1,5 +1,5 @@
-Status 2026-10-23: Findings 1 and 2 ship in v2.1.0-beta.6.
-Findings 3 through 11 are unchanged.
+Status 2026-10-23: Findings 1 and 2 ship in v2.1.0-beta.6. Finding 12 ships in v2.1.0-beta.6 / beta.7.
+Findings 3, 4, 5, 6, 7, 8, 9, 10, and 11 ship in v2.1.0-beta.8.
 The original write-up below is kept as written.
 This status is only a banner; it does not replace the findings.
 

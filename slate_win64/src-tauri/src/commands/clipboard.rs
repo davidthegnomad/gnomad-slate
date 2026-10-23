@@ -30,6 +30,9 @@ pub fn set_clipboard_filter_enabled(enabled: bool, state: tauri::State<AppState>
 
 #[tauri::command]
 pub fn copy_text_to_clipboard(text: String) -> Result<(), String> {
+    if crate::clipboard_filter::is_sensitive(&text) {
+        return crate::clipboard::copy_and_clear_after(text);
+    }
     let mut clipboard = Clipboard::new()
         .map_err(|e| format!("Clipboard unavailable: {}", e))?;
     clipboard

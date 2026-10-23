@@ -108,8 +108,23 @@ function App() {
       setActiveTab,
       loadNotes,
       showAppMessage,
+      appendSource: () => {
+        const el = editorRef.current;
+        if (!el) return editorContent;
+        if (el.selectionStart !== el.selectionEnd) {
+          return el.value.slice(el.selectionStart, el.selectionEnd);
+        }
+        return "";
+      },
+      isVaultUnlocked: vault.isVaultUnlocked,
+      lockVault: vault.handleLockVault,
+      flushEditor: async () => {
+        if (activeTabRef.current !== "secrets") {
+          await saveNoteNow();
+        }
+      },
     }),
-    [editorContent, setEditorContent, saveActiveNote, setTheme, setActiveTab, loadNotes, showAppMessage]
+    [editorContent, setEditorContent, saveActiveNote, setTheme, setActiveTab, loadNotes, showAppMessage, editorRef, vault.isVaultUnlocked, vault.handleLockVault, saveNoteNow]
   );
 
   const palette = useCommandPalette(paletteCtx);
@@ -231,7 +246,14 @@ function App() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => {
+          void (async () => {
+            if (tab === "secrets" && activeTabRef.current !== "secrets") {
+              await saveNoteNow();
+            }
+            setActiveTab(tab);
+          })();
+        }}
         filteredNotes={filteredNotes}
         selectedNoteFilename={selectedNote?.filename ?? null}
         onSelectNote={selectNote}

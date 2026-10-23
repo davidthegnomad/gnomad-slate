@@ -1,4 +1,5 @@
 import { invoke } from "../utils/ipc";
+import { dailyAppendBlock } from "../utils/dailyNote";
 import { renderMarkdownToHtml } from "../utils/markdown";
 import type { PaletteCommandId } from "./paletteCommands";
 import type { ThemePreference } from "../utils/theme";
@@ -11,6 +12,10 @@ type ExecutePaletteContext = {
   setActiveTab: (tab: "all" | "scratch" | "vault" | "secrets") => void;
   loadNotes: () => Promise<void>;
   showAppMessage: (message: string) => void;
+  appendSource: () => string;
+  isVaultUnlocked: boolean;
+  lockVault: () => Promise<void>;
+  flushEditor: () => Promise<void>;
 };
 
 const JSON_REVIVER = (_key: string, value: unknown) => {
@@ -68,16 +73,11 @@ const PALETTE_HANDLERS: Record<
   "daily-note": async (ctx) => {
     const today = new Date().toISOString().split("T")[0];
     const title = `Daily_Note_${today}`;
-    const newContent = `## Log: ${today}\n\n*   Active drafting logs...`;
+    const block = `## Log: ${today}\n\n*   Active drafting logs...`;
     try {
-      await invoke("write_note", {
-        title,
-        content: newContent,
-        isEphemeral: false,
-        previousFilename: null,
-      });
+      await invoke("write_daily_note", { title, block, append: false });
       await ctx.loadNotes();
-      ctx.showAppMessage(`Created ${title}!`);
+      ctx.showAppMessage("Daily note ready");
     } catch (e) {
       console.error(e);
       ctx.showAppMessage("Could not create daily note.");
@@ -86,23 +86,22 @@ const PALETTE_HANDLERS: Record<
   "append-daily": async (ctx) => {
     const today = new Date().toISOString().split("T")[0];
     const title = `Daily_Note_${today}`;
-    const newContent = `\n\n*   [Logged at ${new Date().toLocaleTimeString()}]: ${ctx.editorContent}`;
+    const block = dailyAppendBlock(ctx.editorContent, ctx.appendSource(), new Date().toLocaleTimeString());
     try {
-      await invoke("write_note", {
-        title,
-        content: newContent,
-        isEphemeral: false,
-        previousFilename: null,
-      });
+      await invoke("write_daily_note", { title, block, append: true });
       await ctx.loadNotes();
-      ctx.showAppMessage(`Appended to ${title}!`);
+      ctx.showAppMessage("Appended to daily note");
     } catch (e) {
       console.error(e);
       ctx.showAppMessage("Could not append to daily note.");
     }
   },
-  "lock-vault": (ctx) => {
+  "lock-vault": async (ctx) => {
+    await ctx.flushEditor();
     ctx.setActiveTab("secrets");
+    if (ctx.isVaultUnlocked) {
+      await ctx.lockVault();
+    }
   },
 };
 

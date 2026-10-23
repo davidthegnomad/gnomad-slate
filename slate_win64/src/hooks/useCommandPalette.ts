@@ -12,6 +12,10 @@ type CommandPaletteContext = {
   setActiveTab: (tab: EditorTab) => void;
   loadNotes: () => Promise<void>;
   showAppMessage: (message: string) => void;
+  appendSource: () => string;
+  isVaultUnlocked: boolean;
+  lockVault: () => Promise<void>;
+  flushEditor: () => Promise<void>;
 };
 
 /** Command palette open state, filtering, and execution. */

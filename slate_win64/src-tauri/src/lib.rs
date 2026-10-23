@@ -86,6 +86,7 @@ pub fn run() {
             commands::notes::list_notes,
             commands::notes::read_note,
             commands::notes::write_note,
+            commands::notes::write_daily_note,
             commands::notes::delete_note,
             commands::notes::archive_notes,
             commands::vault::is_vault_initialized,

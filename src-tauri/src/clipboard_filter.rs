@@ -21,6 +21,10 @@ pub fn is_sensitive(text: &str) -> bool {
         return true;
     }
 
+    if looks_like_grouped_recovery_key(trimmed) {
+        return true;
+    }
+
     if matches_credential_pattern(trimmed) {
         return true;
     }
@@ -80,6 +84,40 @@ fn is_likely_identifier(s: &str) -> bool {
     let has_upper = s.chars().any(|c| c.is_ascii_uppercase());
     let has_lower = s.chars().any(|c| c.is_ascii_lowercase());
     has_upper && has_lower && !s.contains('+') && !s.contains('=')
+}
+
+/// 8 groups of 4 Crockford-like base32 characters (a–z, 2–7), hyphen-separated.
+/// Entropy misses most of these keys, so the shape itself is the secret.
+fn looks_like_grouped_recovery_key(s: &str) -> bool {
+    recovery_key_groups(s.as_bytes()) || recovery_key_groups(s.to_ascii_lowercase().as_bytes())
+}
+
+fn recovery_key_groups(bytes: &[u8]) -> bool {
+    const GROUPS: usize = 8;
+    const GROUP_LEN: usize = 4;
+    let mut groups = 0usize;
+    let mut group_len = 0usize;
+    if bytes.is_empty() {
+        return false;
+    }
+    for &b in bytes {
+        if b == b'-' {
+            if group_len != GROUP_LEN {
+                return false;
+            }
+            groups += 1;
+            group_len = 0;
+            continue;
+        }
+        if !matches!(b, b'a'..=b'z' | b'2'..=b'7') {
+            return false;
+        }
+        group_len += 1;
+        if group_len > GROUP_LEN {
+            return false;
+        }
+    }
+    groups + 1 == GROUPS && group_len == GROUP_LEN
 }
 
 fn matches_credential_pattern(s: &str) -> bool {
@@ -209,5 +247,20 @@ mod tests {
     #[test]
     fn entropy_empty_is_zero() {
         assert_eq!(shannon_entropy(""), 0.0);
+    }
+
+    #[test]
+    fn blocks_grouped_recovery_key_below_entropy_threshold() {
+        let key = "aaaa-aaaa-aaaa-aaaa-aaaa-aaaa-aaaa-aaaa";
+        assert!(shannon_entropy(key) < ENTROPY_THRESHOLD);
+        assert!(is_sensitive(key));
+        assert!(is_sensitive("ABCD-EFGH-2345-IJKL-MNOP-QRST-UVWX-YZ23"));
+        assert!(is_sensitive("k7nq-m2rx-4vhw-pc3d-s5yt-ae6j-bufg-23kz"));
+    }
+
+    #[test]
+    fn allows_ordinary_hyphenated_words() {
+        assert!(!is_sensitive("this-is-a-note"));
+        assert!(!is_sensitive("My-Note-Title"));
     }
 }

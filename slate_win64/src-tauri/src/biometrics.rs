@@ -25,11 +25,44 @@ pub fn validate_master_password(password: &str) -> Result<(), String> {
     Ok(())
 }
 
+pub fn config_contains_recovery_wrap() -> Result<bool, String> {
+    let config_path = get_vault_config_path();
+    if !config_path.exists() {
+        return Ok(false);
+    }
+    let json = fs::read_to_string(&config_path)
+        .map_err(|e| format!("Failed to read vault config: {}", e))?;
+    let value: serde_json::Value = serde_json::from_str(&json)
+        .map_err(|e| format!("Failed to parse vault config: {}", e))?;
+    Ok(json_has_recovery_wrap(&value))
+}
+
+fn json_has_recovery_wrap(value: &serde_json::Value) -> bool {
+    let Some(obj) = value.as_object() else {
+        return false;
+    };
+    ["recovery_hash", "wrap_salt", "wrap_nonce", "wrapped_file_key"]
+        .iter()
+        .any(|key| obj.get(*key).is_some_and(|item| !item.is_null()))
+}
+
 pub fn set_master_password(password: &str) -> Result<(), String> {
     validate_master_password(password)?;
 
     let config_path = get_vault_config_path();
     let hashed = hash_master_password(password)?;
+
+    if config_path.exists() {
+        let json = fs::read_to_string(&config_path)
+            .map_err(|e| format!("Failed to read vault config: {}", e))?;
+        let value: serde_json::Value = serde_json::from_str(&json)
+            .map_err(|e| format!("Failed to parse vault config: {}", e))?;
+        if json_has_recovery_wrap(&value) {
+            return Err(
+                "Refusing to rewrite vault config that contains a recovery wrap".to_string(),
+            );
+        }
+    }
 
     let config = VaultConfig {
         password_hash: hashed,

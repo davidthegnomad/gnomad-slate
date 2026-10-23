@@ -68,9 +68,27 @@ impl ClipboardHistory {
 
 const SECRET_CLIPBOARD_CLEAR_SECS: u64 = 30;
 
+static HISTORY_SUPPRESS: Mutex<Option<String>> = Mutex::new(None);
+
+fn suppress_history(text: &str) {
+    if let Ok(mut slot) = HISTORY_SUPPRESS.lock() {
+        *slot = Some(text.trim().to_string());
+    }
+}
+
+fn history_suppressed(text: &str) -> bool {
+    HISTORY_SUPPRESS
+        .lock()
+        .ok()
+        .and_then(|slot| slot.as_ref().map(|secret| secret == text))
+        .unwrap_or(false)
+}
+
 /// Copy text to the system clipboard and clear it after `SECRET_CLIPBOARD_CLEAR_SECS`
 /// only if the clipboard still contains the same text (avoids wiping unrelated copies).
+/// The copy is also kept out of clipboard history.
 pub fn copy_and_clear_after(text: String) -> Result<(), String> {
+    suppress_history(&text);
     let mut clipboard = Clipboard::new()
         .map_err(|e| format!("Clipboard unavailable: {}", e))?;
     clipboard
@@ -153,6 +171,9 @@ pub fn start_clipboard_monitor(
             }
 
             last_copied = trimmed.clone();
+            if history_suppressed(&trimmed) {
+                continue;
+            }
             let filter_on = filter_enabled.lock().map(|g| *g).unwrap_or(true);
 
             if let Ok(mut hist) = history.lock() {

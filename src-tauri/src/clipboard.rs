@@ -68,6 +68,53 @@ pub fn read_clipboard_text() -> Result<String, String> {
 const POLL_ACTIVE_MS: u64 = 1000;
 const POLL_IDLE_MS: u64 = 3000;
 const IDLE_POLLS_BEFORE_SLOWDOWN: u32 = 5;
+const SECRET_CLIPBOARD_CLEAR_SECS: u64 = 30;
+
+static HISTORY_SUPPRESS: Mutex<Option<String>> = Mutex::new(None);
+
+fn suppress_history(text: &str) {
+    if let Ok(mut slot) = HISTORY_SUPPRESS.lock() {
+        *slot = Some(text.trim().to_string());
+    }
+}
+
+fn history_suppressed(text: &str) -> bool {
+    HISTORY_SUPPRESS
+        .lock()
+        .ok()
+        .and_then(|slot| slot.as_ref().map(|secret| secret == text))
+        .unwrap_or(false)
+}
+
+pub fn copy_plain(text: String) -> Result<(), String> {
+    let mut clipboard = Clipboard::new().map_err(|e| format!("Clipboard unavailable: {}", e))?;
+    clipboard
+        .set_text(text)
+        .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
+    Ok(())
+}
+
+/// Copy text and clear the OS clipboard after a short timeout only if it is still the same text.
+/// The copy is also kept out of clipboard history.
+pub fn copy_and_clear_after(text: String) -> Result<(), String> {
+    suppress_history(&text);
+    let mut clipboard = Clipboard::new().map_err(|e| format!("Clipboard unavailable: {}", e))?;
+    clipboard
+        .set_text(text.clone())
+        .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
+
+    thread::spawn(move || {
+        thread::sleep(Duration::from_secs(SECRET_CLIPBOARD_CLEAR_SECS));
+        if let Ok(mut clip) = Clipboard::new() {
+            if let Ok(current) = clip.get_text() {
+                if current == text {
+                    let _ = clip.clear();
+                }
+            }
+        }
+    });
+    Ok(())
+}
 
 /// Starts a background thread to monitor the system clipboard.
 pub fn start_clipboard_monitor(
@@ -113,6 +160,10 @@ pub fn start_clipboard_monitor(
             }
 
             last_copied = trimmed.clone();
+
+            if history_suppressed(&trimmed) {
+                continue;
+            }
 
             let filter_on = filter_enabled.lock().map(|g| *g).unwrap_or(true);
 

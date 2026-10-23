@@ -27,6 +27,7 @@ import {
   type EditorSnapshot,
   type UndoState,
 } from "./utils/notepadEditor";
+import { dailyAppendBlock } from "./utils/dailyNote";
 import { resolveTheme, type ThemePreference } from "./utils/theme";
 import { readSetting, writeSetting } from "./utils/settings";
 import "./App.css";
@@ -113,12 +114,14 @@ function App() {
   const [isVaultInitialized, setIsVaultInitialized] = useState(false);
   const [isVaultUnlocked, setIsVaultUnlocked] = useState(false);
   const [vaultPassword, setVaultPassword] = useState("");
+  const [vaultPasswordConfirm, setVaultPasswordConfirm] = useState("");
   const [wipeVaultConfirm, setWipeVaultConfirm] = useState(false);
   const [recoveryKeyReveal, setRecoveryKeyReveal] = useState<string | null>(null);
   const [recoveryAck, setRecoveryAck] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [recoveryKeyInput, setRecoveryKeyInput] = useState("");
   const [newVaultPassword, setNewVaultPassword] = useState("");
+  const [newVaultPasswordConfirm, setNewVaultPasswordConfirm] = useState("");
   const [secretMetadata, setSecretMetadata] = useState<SecretMeta[]>([]);
   const [revealedIndex, setRevealedIndex] = useState<number | null>(null);
   const [revealedValue, setRevealedValue] = useState("");
@@ -141,6 +144,8 @@ function App() {
   const pendingWindowClose = useRef(false);
   const vaultStartupShown = useRef(false);
   const quittingRef = useRef(false);
+  const recoveryRevealRef = useRef(false);
+  const noteDirtyRef = useRef(false);
   const settingsReady = useRef(false);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -179,6 +184,12 @@ function App() {
   useEffect(() => {
     activeTabRef.current = activeTab;
   }, [activeTab]);
+
+  useEffect(() => {
+    const open = recoveryKeyReveal !== null;
+    recoveryRevealRef.current = open;
+    void invoke("set_recovery_reveal_open", { open }).catch(() => undefined);
+  }, [recoveryKeyReveal]);
 
   // --- Theme State ---
   const [theme, setTheme] = useState<ThemePreference>("dark");
@@ -336,9 +347,9 @@ function App() {
       { name: "Prettify Markdown", desc: "Cleans list structure and header spacing", shortcut: `${modKeyLabel()}+L` },
       { name: "Copy as Raw HTML", desc: "Compiles Markdown to sanitized HTML and copies", shortcut: modShortcut("H", { shift: true }) },
       { name: "Create Daily Note", desc: "Creates or appends to daily journal note", shortcut: modShortcut("D") },
-      { name: "Append to Daily Note", desc: "Appends selected text directly to today's log", shortcut: modShortcut("D", { alt: true }) },
+      { name: "Append to Daily Note", desc: "Appends the selection, or the whole note if nothing is selected, to today's log", shortcut: modShortcut("D", { alt: true }) },
       { name: "Export selection to GitHub Gist", desc: "Publishes selected text as an online gist", shortcut: modShortcut("G") },
-      { name: "Lock / Unlock Secret Vault", desc: "Toggles Vault-X secure credentials lock", shortcut: modShortcut("L", { alt: true }) },
+      { name: "Lock / Unlock Secret Vault", desc: "Locks the vault when it is open. Otherwise opens the lock screen", shortcut: modShortcut("L", { alt: true }) },
       { name: "Switch to Light Theme", desc: "Sets theme to a crisp white minimalist style", shortcut: "" },
       { name: "Switch to Dark Theme", desc: "Sets theme to deep obsidian neon style", shortcut: "" },
       { name: "Switch to System Theme", desc: "Matches system preferences dynamically", shortcut: "" },
@@ -429,6 +440,11 @@ function App() {
     setEditorContent(content);
     setIsEphemeral(note.is_ephemeral);
     isEphemeralRef.current = note.is_ephemeral;
+    noteDirtyRef.current = false;
+    if (saveDebounceRef.current) {
+      clearTimeout(saveDebounceRef.current);
+      saveDebounceRef.current = null;
+    }
   };
 
   const showSaveFeedback = useCallback((message: string) => {
@@ -443,14 +459,18 @@ function App() {
   }, []);
 
   const saveNoteNow = useCallback(
-    async (options?: { promoteToSaved?: boolean }) => {
-      if (activeTabRef.current === "secrets") {
+    async (options?: { promoteToSaved?: boolean; forQuit?: boolean }) => {
+      if (activeTabRef.current === "secrets" && !options?.forQuit) {
         return;
       }
 
       if (saveDebounceRef.current) {
         clearTimeout(saveDebounceRef.current);
         saveDebounceRef.current = null;
+      }
+
+      if (options?.forQuit && !noteDirtyRef.current) {
+        return;
       }
 
       const title = editorTitleRef.current.trim() || "Untitled note";
@@ -483,6 +503,7 @@ function App() {
         setSelectedNote(saved);
         setIsEphemeral(saved.is_ephemeral);
         isEphemeralRef.current = saved.is_ephemeral;
+        noteDirtyRef.current = false;
         showSaveFeedback(promote || !saved.is_ephemeral ? "Saved" : "Draft saved");
       } catch (e) {
         console.error("Save failed:", e);
@@ -619,9 +640,12 @@ function App() {
   );
 
   const flushPendingSave = useCallback(async () => {
+    const pending = saveDebounceRef.current !== null || noteDirtyRef.current;
     if (saveDebounceRef.current) {
       clearTimeout(saveDebounceRef.current);
       saveDebounceRef.current = null;
+    }
+    if (pending) {
       await saveActiveNote();
     }
   }, [saveActiveNote]);
@@ -630,28 +654,23 @@ function App() {
     if (quittingRef.current) {
       return;
     }
-    if (saveDebounceRef.current) {
-      await flushPendingSave();
-    } else {
-      await saveNoteNow();
-    }
-    const onLinux = isLinuxDesktop();
-    if (onLinux) {
-      quittingRef.current = true;
-      try {
-        await quitDesktopApp();
-      } catch (error) {
-        quittingRef.current = false;
-        console.error("Quit failed:", error);
-      }
+    if (recoveryRevealRef.current) {
+      showAppMessage("Save your recovery key before closing.");
       return;
     }
-    const win = getPlatformWindow();
-    await win.destroy();
-  }, [flushPendingSave, saveNoteNow]);
+    await saveNoteNow({ forQuit: true });
+    quittingRef.current = true;
+    try {
+      await quitDesktopApp();
+    } catch (error) {
+      quittingRef.current = false;
+      console.error("Quit failed:", error);
+    }
+  }, [saveNoteNow, showAppMessage]);
 
   const scheduleSaveNote = useCallback(
     (overrideContent?: string, overrideTitle?: string, forceVault?: boolean) => {
+      noteDirtyRef.current = true;
       if (saveDebounceRef.current) {
         clearTimeout(saveDebounceRef.current);
       }
@@ -741,6 +760,10 @@ function App() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     void listen("window-close-requested", () => {
+      if (recoveryRevealRef.current) {
+        showAppMessage("Save your recovery key before closing.");
+        return;
+      }
       if (saveDebounceRef.current) {
         pendingWindowClose.current = true;
         setClosePromptOpen(true);
@@ -756,7 +779,7 @@ function App() {
     return () => {
       unlisten?.();
     };
-  }, [saveNoteNow, closeApp]);
+  }, [saveNoteNow, closeApp, showAppMessage]);
 
   useEffect(() => {
     if (!isLinuxDesktop() || !isTauri()) {
@@ -766,6 +789,10 @@ function App() {
     void getCurrentWindow()
       .onCloseRequested(async (event) => {
         event.preventDefault();
+        if (recoveryRevealRef.current) {
+          showAppMessage("Save your recovery key before closing.");
+          return;
+        }
         if (saveDebounceRef.current) {
           pendingWindowClose.current = true;
           setClosePromptOpen(true);
@@ -780,12 +807,16 @@ function App() {
     return () => {
       unlisten?.();
     };
-  }, [saveNoteNow, closeApp]);
+  }, [saveNoteNow, closeApp, showAppMessage]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     void listen("app-quit-requested", () => {
       if (quittingRef.current) {
+        return;
+      }
+      if (recoveryRevealRef.current) {
+        showAppMessage("Save your recovery key before closing.");
         return;
       }
       if (saveDebounceRef.current) {
@@ -800,7 +831,7 @@ function App() {
     return () => {
       unlisten?.();
     };
-  }, [closeApp]);
+  }, [closeApp, showAppMessage]);
 
   showPaletteRef.current = showPalette;
   showClipboardRef.current = showClipboard;
@@ -1058,36 +1089,31 @@ function App() {
 
       case "Create Daily Note":
       case "Append to Daily Note": {
+        if (activeTabRef.current !== "secrets") {
+          await saveNoteNow();
+        }
         const today = new Date().toISOString().split("T")[0];
         const title = `Daily_Note_${today}`;
-        const existing = notes.find((n) => n.title === title);
+        const appending = commandName === "Append to Daily Note";
+        const textarea = editorRef.current;
+        const source = editorContentRef.current;
+        const selection =
+          textarea && textarea.selectionStart !== textarea.selectionEnd
+            ? source.slice(textarea.selectionStart, textarea.selectionEnd)
+            : "";
+        const block = appending
+          ? dailyAppendBlock(source, selection, new Date().toLocaleTimeString())
+          : `## Log: ${today}\n\n*   Active drafting logs...`;
         const stripEphemeral = (content: string) =>
           content.startsWith("<!-- ephemeral -->\n")
             ? content.replace("<!-- ephemeral -->\n", "")
             : content;
-        const existingBody = existing ? stripEphemeral(existing.content) : "";
-        let newContent = existingBody;
-        if (commandName === "Append to Daily Note") {
-          const source = editorContentRef.current;
-          const textarea = editorRef.current;
-          const selected =
-            textarea && textarea.selectionStart !== textarea.selectionEnd
-              ? source.slice(textarea.selectionStart, textarea.selectionEnd)
-              : source;
-          const base = existingBody.trim()
-            ? existingBody.replace(/\s*$/, "")
-            : `## Log: ${today}`;
-          newContent = `${base}\n\n*   [Logged at ${new Date().toLocaleTimeString()}]: ${selected}`;
-        } else if (!existingBody.trim()) {
-          newContent = `## Log: ${today}\n\n*   Active drafting logs...`;
-        }
 
         try {
-          const saved = await invoke<Note>("write_note", {
+          const saved = await invoke<Note>("write_daily_note", {
             title,
-            content: newContent,
-            isEphemeral: false,
-            previousFilename: existing?.filename ?? null,
+            block,
+            append: appending,
           });
           const body = stripEphemeral(saved.content);
           undoRef.current = emptyUndo();
@@ -1095,9 +1121,7 @@ function App() {
           setActiveTab("vault");
           activeTabRef.current = "vault";
           setNotes((prev) => {
-            const filtered = prev.filter(
-              (n) => n.filename !== saved.filename && n.filename !== existing?.filename
-            );
+            const filtered = prev.filter((n) => n.filename !== saved.filename);
             return [saved, ...filtered];
           });
           setSelectedNote(saved);
@@ -1108,7 +1132,8 @@ function App() {
           setIsEphemeral(false);
           isEphemeralRef.current = false;
           setCaretLine(0);
-          showSaveFeedback(commandName === "Append to Daily Note" ? "Appended to daily note" : "Daily note ready");
+          noteDirtyRef.current = false;
+          showSaveFeedback(appending ? "Appended to daily note" : "Daily note ready");
         } catch (e) {
           console.error(e);
         }
@@ -1120,7 +1145,14 @@ function App() {
         break;
 
       case "Lock / Unlock Secret Vault":
+        if (activeTabRef.current !== "secrets") {
+          await saveNoteNow();
+        }
+        activeTabRef.current = "secrets";
         setActiveTab("secrets");
+        if (isVaultUnlocked) {
+          await handleLockVault();
+        }
         break;
     }
   };
@@ -1166,8 +1198,21 @@ function App() {
   }, [editorContent, editorView, showLineNumbers]);
 
   // --- Secure Vault-X Database Operations ---
+  const passwordsMatch = (password: string, confirm: string): boolean => {
+    if (password.length < 8) {
+      showAppMessage("Master password must be at least 8 characters.");
+      return false;
+    }
+    if (password !== confirm) {
+      showAppMessage("Passwords do not match.");
+      return false;
+    }
+    return true;
+  };
+
   const handleInitVault = async (wipeExisting = false) => {
     if (!vaultPassword) return;
+    if (!passwordsMatch(vaultPassword, vaultPasswordConfirm)) return;
     try {
       const result = await invoke<InitializeVaultResult>("initialize_vault", {
         password: vaultPassword,
@@ -1184,6 +1229,7 @@ function App() {
       setIsVaultInitialized(true);
       setIsVaultUnlocked(true);
       setVaultPassword("");
+      setVaultPasswordConfirm("");
       clearRevealedSecret();
       try {
         await loadSecretMetadata();
@@ -1217,10 +1263,12 @@ function App() {
     setRecoveryMode(false);
     setRecoveryKeyInput("");
     setNewVaultPassword("");
+    setNewVaultPasswordConfirm("");
   };
 
   const handleRecoverVault = async () => {
     if (!recoveryKeyInput || !newVaultPassword) return;
+    if (!passwordsMatch(newVaultPassword, newVaultPasswordConfirm)) return;
     try {
       await invoke("recover_vault", {
         recoveryKey: recoveryKeyInput,
@@ -1243,6 +1291,20 @@ function App() {
       showAppMessage("Recovery key copied.");
     } catch (e: unknown) {
       showAppMessage("Copy failed: " + invokeErrorMessage(e));
+    }
+  };
+
+  const handleIssueRecoveryKey = async () => {
+    try {
+      const recoveryKey = await invoke<string>("issue_recovery_key");
+      if (!recoveryKey) {
+        showAppMessage("Could not issue a recovery key.");
+        return;
+      }
+      setRecoveryKeyReveal(recoveryKey);
+      setRecoveryAck(false);
+    } catch (e: unknown) {
+      showAppMessage("Could not issue a recovery key: " + invokeErrorMessage(e));
     }
   };
 
@@ -1360,7 +1422,15 @@ function App() {
           <TipButton
             className={`tab-btn ${activeTab === "secrets" ? "active" : ""}`}
             tip="Password-protected store for API keys and tokens"
-            onClick={() => setActiveTab("secrets")}
+            onClick={() => {
+              void (async () => {
+                if (activeTabRef.current !== "secrets") {
+                  await saveNoteNow();
+                }
+                activeTabRef.current = "secrets";
+                setActiveTab("secrets");
+              })();
+            }}
           >
             Secrets
           </TipButton>
@@ -1485,6 +1555,17 @@ function App() {
                         if (e.key === "Enter") void handleRecoverVault();
                       }}
                     />
+                    <input
+                      type="password"
+                      className="vault-password-input"
+                      placeholder="Confirm new master password"
+                      value={newVaultPasswordConfirm}
+                      autoComplete="new-password"
+                      onChange={(e) => setNewVaultPasswordConfirm(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleRecoverVault();
+                      }}
+                    />
                     <button
                       className="action-btn accent"
                       style={{ padding: "10px", justifyContent: "center" }}
@@ -1510,10 +1591,23 @@ function App() {
                       onChange={(e) => setVaultPassword(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                          isVaultInitialized ? handleUnlockVault() : handleInitVault();
+                          isVaultInitialized ? handleUnlockVault() : void handleInitVault();
                         }
                       }}
                     />
+                    {!isVaultInitialized && (
+                      <input
+                        type="password"
+                        className="vault-password-input"
+                        placeholder="Confirm Master Password"
+                        value={vaultPasswordConfirm}
+                        autoComplete="new-password"
+                        onChange={(e) => setVaultPasswordConfirm(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void handleInitVault();
+                        }}
+                      />
+                    )}
                     <button
                       className="action-btn accent has-tooltip"
                       style={{ padding: "10px", justifyContent: "center" }}
@@ -1557,6 +1651,13 @@ function App() {
                       onClick={() => setShowAddSecret(true)}
                     >
                       + Add Secret Key
+                    </TipButton>
+                    <TipButton
+                      className="action-btn"
+                      tip="Replace the recovery wrap and show a new key once"
+                      onClick={() => void handleIssueRecoveryKey()}
+                    >
+                      New recovery key
                     </TipButton>
                     <TipButton
                       className="action-btn"
@@ -1996,7 +2097,8 @@ function App() {
             <div className="modal-body">
               <p style={{ fontSize: "13px", lineHeight: 1.5, marginBottom: "12px" }}>
                 This key is shown once. Store it somewhere safe. You can use it to set a new
-                master password if you forget this one.
+                master password if you forget this one. Quit and hide stay blocked until you
+                continue. If you lose the key, unlock with your password and issue a new one.
               </p>
               <div className="recovery-key-value">{recoveryKeyReveal}</div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>

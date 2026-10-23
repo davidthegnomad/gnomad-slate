@@ -18,6 +18,17 @@ pub fn is_vault_unlocked(state: tauri::State<AppState>) -> bool {
 
 #[tauri::command]
 pub fn initialize_vault(password: String, state: tauri::State<AppState>) -> Result<(), String> {
+    let vault_file = crate::vault_io::vault_file_path();
+    if vault_file.exists() {
+        let bytes = std::fs::read(&vault_file)
+            .map_err(|e| format!("Failed to read secure vault: {}", e))?;
+        if vault_migration::v2_rewrite_refused(&bytes) {
+            return Err(vault_migration::V2_REWRITE_REFUSED.to_string());
+        }
+    }
+    if biometrics::config_contains_recovery_wrap()? {
+        return Err(vault_migration::V2_REWRITE_REFUSED.to_string());
+    }
     biometrics::validate_master_password(&password)?;
     biometrics::set_master_password(&password)?;
     let file_salt = crate::crypto::generate_vault_salt();
@@ -32,7 +43,7 @@ pub fn initialize_vault(password: String, state: tauri::State<AppState>) -> Resu
 /// Unlock matrix (see `vault_migration::plan_unlock`):
 /// - empty vault → new v3 salt
 /// - v1 legacy → decrypt, new salt, persist as v3
-/// - v2 fixed salt → decrypt, rotate to v3 per-file salt, persist
+/// - v2 fixed salt → decrypt with the existing key and do not rewrite the file
 /// - v3 → use salt from file header
 #[tauri::command]
 pub async fn unlock_vault(password: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
@@ -66,9 +77,7 @@ pub async fn unlock_vault(password: String, state: tauri::State<'_, AppState>) -
     )?;
 
     if plan.rotate_to_v3 {
-        let new_salt = crate::crypto::generate_vault_salt();
-        vault_session::rotate_session_file_salt(&state.vault_session, &password, new_salt)?;
-        persist_vault(&state)?;
+        return Err(vault_migration::V2_REWRITE_REFUSED.to_string());
     } else if plan.persist_after_legacy {
         persist_vault(&state)?;
     }

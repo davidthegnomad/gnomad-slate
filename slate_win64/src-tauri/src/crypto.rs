@@ -1,7 +1,7 @@
 //! Vault file encryption formats and key derivation.
 //!
 //! - **v3** (`0x03`): Per-file random 16-byte KDF salt + AES-256-GCM payload (current).
-//! - **v2** (`0x02`): Legacy fixed application salt — migrated to v3 on unlock.
+//! - **v2** (`0x02`): Legacy fixed application salt. Left as v2; this build does not rewrite it.
 //! - **v1**: Legacy per-blob PHC salt — migrated to v3 on unlock.
 
 use aes_gcm::{
@@ -19,7 +19,7 @@ const SALT_LEN: usize = 16;
 const FORMAT_V2: u8 = 0x02;
 const FORMAT_V3: u8 = 0x03;
 
-/// Legacy application-wide salt for v2 vault files (migrated to v3 on next unlock/save).
+/// Legacy application-wide salt for v2 vault files. Do not rewrite these files to v3.
 const LEGACY_V2_KDF_SALT: &[u8] = b"com.gnomadstudio.gnomad-slate.vault.v2";
 
 pub fn generate_vault_salt() -> [u8; SALT_LEN] {
@@ -180,7 +180,8 @@ pub fn is_legacy_vault_format(packet: &[u8]) -> bool {
     !packet.is_empty() && packet[0] != FORMAT_V2 && packet[0] != FORMAT_V3
 }
 
-/// Returns true if the vault uses the legacy v2 fixed-salt format (migrate to v3 on save).
+/// Returns true if the vault uses the legacy v2 fixed-salt format.
+/// Callers must refuse a v3 rewrite; this build cannot preserve a recovery wrap.
 pub fn is_v2_vault_format(packet: &[u8]) -> bool {
     !packet.is_empty() && packet[0] == FORMAT_V2
 }

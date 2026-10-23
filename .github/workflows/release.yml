@@ -9,7 +9,7 @@ on:
       release_tag:
         description: Release tag to upload into
         required: true
-        default: v2.1.0-beta.7
+        default: v2.1.0-beta.8
       only_label:
         description: Build only this matrix label, or all
         required: false
@@ -101,8 +101,8 @@ jobs:
 
             | Platform | Version | Tree |
             |----------|---------|------|
-            | **macOS** | 2.1.0-beta.7 | repository root |
-            | **Linux** | 2.1.0-beta.7 | repository root |
+            | **macOS** | 2.1.0-beta.8 | repository root |
+            | **Linux** | 2.1.0-beta.8 | repository root |
             | **Windows** | 1.0.0-alpha.1 | `slate_win64/` |
 
             **Downloads:** [GitHub Pages](https://davidthegnomad.github.io/gnomad-slate/)

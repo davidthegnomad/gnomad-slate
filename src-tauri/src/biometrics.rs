@@ -184,6 +184,10 @@ pub fn save_vault_config(config: &VaultConfig) -> Result<(), String> {
     save_vault_config_at(&get_vault_config_path(), config)
 }
 
+pub(crate) fn save_vault_config_in(dir: &Path, config: &VaultConfig) -> Result<(), String> {
+    save_vault_config_at(&config_path_in(dir), config)
+}
+
 pub fn hash_verifier(secret: &str) -> Result<String, String> {
     let salt = SaltString::generate(&mut OsRng);
     let hash = Argon2::default()

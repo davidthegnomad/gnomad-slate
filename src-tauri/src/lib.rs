@@ -17,7 +17,6 @@ pub mod unlock_limiter;
 mod vault_commit;
 pub mod vault_session;
 
-use arboard::Clipboard;
 use serde::Serialize;
 #[cfg(target_os = "macos")]
 use std::sync::atomic::AtomicU64;
@@ -150,6 +149,10 @@ pub(crate) fn lock_vault_session(state: &AppState) {
 
 /// Locks the vault and exits. Same path as the `confirm_quit` command.
 pub(crate) fn perform_confirm_quit(app: &AppHandle, state: &AppState) {
+    if recovery_reveal_open() {
+        tracing::info!("quit blocked while the recovery key is on screen");
+        return;
+    }
     if QUIT_IN_PROGRESS.swap(true, Ordering::SeqCst) {
         tracing::debug!("confirm_quit ignored — already quitting");
         return;
@@ -176,11 +179,11 @@ fn confirm_quit(app: AppHandle, state: tauri::State<AppState>) {
 
 #[tauri::command]
 fn copy_text_to_clipboard(text: String) -> Result<(), String> {
-    let mut clipboard = Clipboard::new().map_err(|e| format!("Clipboard unavailable: {}", e))?;
-    clipboard
-        .set_text(text)
-        .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
-    Ok(())
+    if clipboard_filter::is_sensitive(&text) {
+        clipboard::copy_and_clear_after(text)
+    } else {
+        clipboard::copy_plain(text)
+    }
 }
 
 #[tauri::command]
@@ -197,6 +200,11 @@ fn write_note(
     previous_filename: Option<String>,
 ) -> Result<Note, String> {
     filesystem::write_note(&title, &content, is_ephemeral, previous_filename.as_deref())
+}
+
+#[tauri::command]
+fn write_daily_note(title: String, block: String, append: bool) -> Result<Note, String> {
+    filesystem::write_daily_note(&title, &block, append)
 }
 
 #[tauri::command]
@@ -312,6 +320,20 @@ fn lock_vault(state: tauri::State<AppState>) {
     lock_vault_session(&state);
 }
 
+/// Rewraps the unlocked session file key and returns the new recovery key once.
+/// The plaintext key is not stored. A crash after this save cannot reprint the unseen key;
+/// calling the command again issues a different key.
+#[tauri::command]
+fn issue_recovery_key(state: tauri::State<AppState>) -> Result<String, String> {
+    let _write_guard = vault_write_lock()?;
+    vault_commit::issue_recovery_key_in(&vault_dir(), &state)
+}
+
+#[tauri::command]
+fn set_recovery_reveal_open(open: bool) {
+    RECOVERY_REVEAL_OPEN.store(open, Ordering::SeqCst);
+}
+
 pub(crate) fn list_secret_metadata_for(state: &AppState) -> Result<Vec<SecretMeta>, String> {
     vault_session::with_session(&state.vault_session, |session| Ok(session.list_metadata()))
 }
@@ -327,12 +349,8 @@ pub(crate) fn copy_secret_for(index: usize, state: &AppState) -> Result<(), Stri
     let value =
         vault_session::with_session(&state.vault_session, |session| session.get_value(index))?;
 
-    let mut clipboard = Clipboard::new().map_err(|e| format!("Clipboard unavailable: {}", e))?;
-    clipboard
-        .set_text(value.to_string())
-        .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
+    clipboard::copy_and_clear_after(value.to_string())?;
     // `value` (Zeroizing<String>) drops here and overwrites its heap buffer.
-
     Ok(())
 }
 
@@ -385,6 +403,11 @@ fn delete_secret(index: usize, state: tauri::State<AppState>) -> Result<(), Stri
 
 static INTENTIONALLY_HIDDEN: AtomicBool = AtomicBool::new(false);
 static QUIT_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
+static RECOVERY_REVEAL_OPEN: AtomicBool = AtomicBool::new(false);
+
+fn recovery_reveal_open() -> bool {
+    RECOVERY_REVEAL_OPEN.load(Ordering::SeqCst)
+}
 #[cfg(target_os = "macos")]
 static APP_WAS_ACTIVE: AtomicBool = AtomicBool::new(true);
 
@@ -405,6 +428,10 @@ fn show_main_window(app: &AppHandle) {
 }
 
 fn hide_main_window(app: &AppHandle, intentional: bool) {
+    if recovery_reveal_open() {
+        tracing::info!("hide blocked while the recovery key is on screen");
+        return;
+    }
     if intentional {
         INTENTIONALLY_HIDDEN.store(true, Ordering::SeqCst);
     }
@@ -497,6 +524,9 @@ fn attach_hide_on_blur(window: &tauri::WebviewWindow) {
                     if w.is_focused().unwrap_or(true) {
                         return;
                     }
+                    if recovery_reveal_open() {
+                        return;
+                    }
                     let _ = w.hide();
                 });
             }
@@ -583,6 +613,7 @@ pub fn run() {
             list_notes,
             read_note,
             write_note,
+            write_daily_note,
             delete_note,
             archive_notes,
             is_vault_initialized,
@@ -592,6 +623,8 @@ pub fn run() {
             unlock_vault,
             recover_vault,
             lock_vault,
+            issue_recovery_key,
+            set_recovery_reveal_open,
             list_secret_metadata,
             reveal_secret_value,
             copy_secret_to_clipboard,
@@ -605,7 +638,13 @@ pub fn run() {
                 maybe_show_on_app_activate(app_handle);
             }
             if let RunEvent::ExitRequested { api, .. } = event {
+                if QUIT_IN_PROGRESS.load(Ordering::SeqCst) {
+                    return;
+                }
                 api.prevent_exit();
+                if recovery_reveal_open() {
+                    return;
+                }
                 emit_quit_requested(app_handle);
             }
         });

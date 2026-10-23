@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { invoke, getPlatformWindow, quitDesktopApp } from "../utils/ipc";
+import { invoke, quitDesktopApp } from "../utils/ipc";
 import { NOTE_SAVE_DEBOUNCE_MS } from "../constants/timing";
-import { isWindowsDesktop } from "../utils/platform";
 import type { EditorTab, Note } from "../types/app";
 
 type UseNoteEditorOptions = {
@@ -24,6 +23,7 @@ export function useNoteEditor({ activeTabRef, setActiveTab, quittingRef }: UseNo
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noteDirtyRef = useRef(false);
   const editorTitleRef = useRef(editorTitle);
   const editorContentRef = useRef(editorContent);
   const isEphemeralRef = useRef(isEphemeral);
@@ -69,14 +69,18 @@ export function useNoteEditor({ activeTabRef, setActiveTab, quittingRef }: UseNo
   }, []);
 
   const saveNoteNow = useCallback(
-    async (options?: { promoteToSaved?: boolean }) => {
-      if (activeTabRef.current === "secrets") {
+    async (options?: { promoteToSaved?: boolean; forQuit?: boolean }) => {
+      if (activeTabRef.current === "secrets" && !options?.forQuit) {
         return;
       }
 
       if (saveDebounceRef.current) {
         clearTimeout(saveDebounceRef.current);
         saveDebounceRef.current = null;
+      }
+
+      if (options?.forQuit && !noteDirtyRef.current) {
+        return;
       }
 
       const title = editorTitleRef.current.trim() || "Untitled note";
@@ -109,6 +113,7 @@ export function useNoteEditor({ activeTabRef, setActiveTab, quittingRef }: UseNo
         setSelectedNote(saved);
         setIsEphemeral(saved.is_ephemeral);
         isEphemeralRef.current = saved.is_ephemeral;
+        noteDirtyRef.current = false;
         showSaveFeedback(promote || !saved.is_ephemeral ? "Saved" : "Draft saved");
       } catch (e) {
         console.error("Save failed:", e);
@@ -143,15 +148,19 @@ export function useNoteEditor({ activeTabRef, setActiveTab, quittingRef }: UseNo
   );
 
   const flushPendingSave = useCallback(async () => {
+    const pending = saveDebounceRef.current !== null || noteDirtyRef.current;
     if (saveDebounceRef.current) {
       clearTimeout(saveDebounceRef.current);
       saveDebounceRef.current = null;
+    }
+    if (pending) {
       await saveActiveNote();
     }
   }, [saveActiveNote]);
 
   const scheduleSaveNote = useCallback(
     (overrideContent?: string, overrideTitle?: string, forceVault?: boolean) => {
+      noteDirtyRef.current = true;
       if (saveDebounceRef.current) {
         clearTimeout(saveDebounceRef.current);
       }
@@ -174,6 +183,11 @@ export function useNoteEditor({ activeTabRef, setActiveTab, quittingRef }: UseNo
       }
       setEditorContent(content);
       setIsEphemeral(note.is_ephemeral);
+      noteDirtyRef.current = false;
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+        saveDebounceRef.current = null;
+      }
     },
     [flushPendingSave]
   );
@@ -295,24 +309,15 @@ export function useNoteEditor({ activeTabRef, setActiveTab, quittingRef }: UseNo
     if (quittingRef.current) {
       return;
     }
-    if (saveDebounceRef.current) {
-      await flushPendingSave();
-    } else {
-      await saveNoteNow();
+    await saveNoteNow({ forQuit: true });
+    quittingRef.current = true;
+    try {
+      await quitDesktopApp();
+    } catch (error) {
+      quittingRef.current = false;
+      console.error("Quit failed:", error);
     }
-    if (isWindowsDesktop()) {
-      quittingRef.current = true;
-      try {
-        await quitDesktopApp();
-      } catch (error) {
-        quittingRef.current = false;
-        console.error("Quit failed:", error);
-      }
-      return;
-    }
-    const win = getPlatformWindow();
-    await win.destroy();
-  }, [flushPendingSave, saveNoteNow, quittingRef]);
+  }, [saveNoteNow, quittingRef]);
 
   const lineNumberRows = useMemo(() => {
     const lineCount = Math.max(1, editorContent.split("\n").length);

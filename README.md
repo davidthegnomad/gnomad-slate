@@ -1,6 +1,6 @@
 # Gnomad Slate
 
-[![Version](https://img.shields.io/badge/mac%2Flinux-2.1.0--beta.7-06b6d4)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/mac%2Flinux-2.1.0--beta.8-06b6d4)](CHANGELOG.md)
 [![Windows](https://img.shields.io/badge/windows-1.0.0--alpha.1-8b5cf6)](slate_win64/)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%2019-8b5cf6)](docs/TECH_STACK.md)
 [![Security](https://img.shields.io/badge/vault-AES--256--GCM%20%2B%20Argon2id-333)](docs/VAULT_SECURITY.md)
@@ -20,7 +20,7 @@ Built with ❤️ by [Gnomad Studio](https://gnomadstudio.org) 🦙
 
 | Tree | Platforms | Version |
 |------|-----------|---------|
-| **Repository root** | macOS, Linux | `2.1.0-beta.7` |
+| **Repository root** | macOS, Linux | `2.1.0-beta.8` |
 | **`slate_win64/`** | Windows only | `1.0.0-alpha.1` |
 
 Do not build Windows from the root tree. See [`docs/PLATFORM_LAYOUT.md`](docs/PLATFORM_LAYOUT.md).

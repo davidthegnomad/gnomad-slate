@@ -11,6 +11,11 @@ pub fn read_note(filename: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+pub fn write_daily_note(title: String, block: String, append: bool) -> Result<Note, String> {
+    filesystem::write_daily_note(&title, &block, append)
+}
+
+#[tauri::command]
 pub fn write_note(
     title: String,
     content: String,

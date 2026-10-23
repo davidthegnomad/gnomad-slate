@@ -1,6 +1,7 @@
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use zeroize::Zeroize;
 
 use crate::biometrics::{self, VaultConfig};
 use crate::crypto::{self, VAULT_FILE_MISSING};
@@ -224,6 +225,25 @@ pub(crate) fn initialize_vault_in(
         limiter.record_success();
     }
     Ok(InitializedVault { recovery_key })
+}
+
+/// Issues a new recovery key for the unlocked session file key and stores only the wrap.
+/// The returned key is the only copy. It is not written to disk.
+pub(crate) fn issue_recovery_key_in(dir: &Path, state: &super::AppState) -> Result<String, String> {
+    let mut file_key = vault_session::with_session(&state.vault_session, |session| {
+        Ok(session.copy_file_key())
+    })?;
+    let issued = (|| {
+        let recovery_key = crypto::generate_recovery_key();
+        let recovery_hash = biometrics::hash_verifier(&recovery_key)?;
+        let wrap = crypto::create_recovery_wrap(&file_key, &recovery_key)?;
+        let mut config = biometrics::load_vault_config_in(dir)?;
+        config.set_recovery(recovery_hash, &wrap);
+        biometrics::save_vault_config_in(dir, &config)?;
+        Ok(recovery_key)
+    })();
+    file_key.zeroize();
+    issued
 }
 
 pub(crate) fn unlock_vault_in(

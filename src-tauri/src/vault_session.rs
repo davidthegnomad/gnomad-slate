@@ -65,6 +65,10 @@ impl VaultSession {
         Self::from_password_and_secrets(password, secrets)
     }
 
+    pub fn copy_file_key(&self) -> [u8; 32] {
+        *self.key
+    }
+
     pub fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>, String> {
         crypto::encrypt_vault_with_key(plaintext, &self.key)
     }

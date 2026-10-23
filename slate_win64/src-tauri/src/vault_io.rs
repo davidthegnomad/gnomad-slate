@@ -47,6 +47,13 @@ pub fn write_encrypted_vault(data: &[u8]) -> Result<(), String> {
 }
 
 pub fn persist_vault(state: &AppState) -> Result<(), String> {
+    let path = vault_file_path();
+    if path.exists() {
+        let existing = fs::read(&path).map_err(|e| format!("Failed to read secure vault: {}", e))?;
+        if crate::crypto::is_v2_vault_format(&existing) {
+            return Err(crate::vault_migration::V2_REWRITE_REFUSED.to_string());
+        }
+    }
     let encrypted = vault_session::with_session(&state.vault_session, |session| {
         session.encrypt_secrets()
     })?;

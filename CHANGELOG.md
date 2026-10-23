@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 
 ---
 
+## [2.1.0-beta.8] — October 2026
+
+### Added
+
+- Issue a new Vault-X recovery key while the vault is unlocked. Quit and hide stay blocked until the one-time key dialog is closed.
+
+### Fixed
+
+- Copying a recovery key or secret skips clipboard history and clears the clipboard after a short timeout if that text is still there
+- Creating or resetting a vault asks for the password twice
+- The command palette Lock command locks the vault
+- Quitting locks the vault on macOS, Linux, and Windows
+- Windows no longer rewrites a v2 vault in a way that drops the recovery wrap
+- Daily notes append instead of replacing the journal
+- A second saved note on the same day keeps the first note
+- Switching to Secrets saves the open note first
+
+---
+
 ## [2.1.0-beta.7] — October 2026
 
 ### Added
