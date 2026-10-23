@@ -45,8 +45,27 @@ jobs:
               handle.write("include=" + json.dumps(rows) + "\n")
           PY
 
-  build:
+  release:
     needs: select
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the release before builds upload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+        run: |
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release $TAG already exists"
+            exit 0
+          fi
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "Gnomad Slate $TAG" \
+            --latest \
+            --notes "Desktop builds are uploading. See CHANGELOG.md."
+
+  build:
+    needs: [select, release]
     strategy:
       fail-fast: false
       matrix:
