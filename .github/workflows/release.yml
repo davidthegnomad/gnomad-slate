@@ -19,27 +19,38 @@ permissions:
   contents: write
 
 jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.set.outputs.include }}
+    steps:
+      - id: set
+        env:
+          ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.only_label || '' }}
+        run: |
+          python3 - << 'PY'
+          import json, os
+          rows = [
+              {"platform": "ubuntu-latest", "projectPath": ".", "label": "linux", "target": ""},
+              {"platform": "windows-latest", "projectPath": "slate_win64", "label": "windows", "target": ""},
+              {"platform": "macos-latest", "projectPath": ".", "label": "macos-arm64", "target": "aarch64-apple-darwin"},
+              {"platform": "macos-latest", "projectPath": ".", "label": "macos-x64", "target": "x86_64-apple-darwin"},
+          ]
+          only = os.environ.get("ONLY", "")
+          if only:
+              rows = [row for row in rows if row["label"] == only]
+              if not rows:
+                  raise SystemExit(f"unknown label: {only}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as handle:
+              handle.write("include=" + json.dumps(rows) + "\n")
+          PY
+
   build:
+    needs: select
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: ubuntu-latest
-            projectPath: .
-            label: linux
-          - platform: windows-latest
-            projectPath: slate_win64
-            label: windows
-          - platform: macos-latest
-            target: aarch64-apple-darwin
-            projectPath: .
-            label: macos-arm64
-          - platform: macos-latest
-            target: x86_64-apple-darwin
-            projectPath: .
-            label: macos-x64
-
-    if: github.event_name != 'workflow_dispatch' || inputs.only_label == '' || inputs.only_label == matrix.label
+        include: ${{ fromJSON(needs.select.outputs.include) }}
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -51,9 +62,15 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ matrix.projectPath == '.' && 'package-lock.json' || 'slate_win64/package-lock.json' }}
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust target
+        if: matrix.target != ''
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Install Rust
+        if: matrix.target == ''
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-latest'
