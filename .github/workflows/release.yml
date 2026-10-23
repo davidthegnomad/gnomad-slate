@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to upload into
+        required: true
+        default: v2.1.0-beta.7
+      only_label:
+        description: Build only this matrix label, or all
+        required: false
+        default: macos-x64
 
 permissions:
   contents: write
@@ -29,6 +39,7 @@ jobs:
             projectPath: .
             label: macos-x64
 
+    if: github.event_name != 'workflow_dispatch' || inputs.only_label == '' || inputs.only_label == matrix.label
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -63,10 +74,11 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: ${{ matrix.projectPath }}
-          tagName: ${{ github.ref_name }}
-          releaseName: Gnomad Slate ${{ github.ref_name }}
+          args: ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
+          tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          releaseName: Gnomad Slate ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
           releaseBody: |
-            ## Gnomad Slate ${{ github.ref_name }}
+            ## Gnomad Slate ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
 
             See [CHANGELOG.md](https://github.com/davidthegnomad/gnomad-slate/blob/main/CHANGELOG.md) and [PLATFORM_LAYOUT.md](https://github.com/davidthegnomad/gnomad-slate/blob/main/docs/PLATFORM_LAYOUT.md).
 
