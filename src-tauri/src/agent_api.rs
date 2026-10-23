@@ -509,13 +509,15 @@ fn vault_password(ctx: &AgentCtx, body: &str, init: bool) -> Reply {
         Err(reply) => return reply,
     };
     let result = if init {
-        crate::initialize_vault_with(&parsed.password, &ctx.state)
+        crate::initialize_vault_with(&parsed.password, false, &ctx.state).map(|recovery_key| {
+            json!({ "unlocked": true, "recovery_key": recovery_key })
+        })
     } else {
-        crate::unlock_vault_with(&parsed.password, &ctx.state)
+        crate::unlock_vault_with(&parsed.password, &ctx.state).map(|_| json!({ "unlocked": true }))
     };
     parsed.password.zeroize();
     match result {
-        Ok(()) => ok_json(json!({ "unlocked": true })),
+        Ok(body) => ok_json(body),
         Err(e) => err(400, e),
     }
 }

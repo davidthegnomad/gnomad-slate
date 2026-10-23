@@ -56,6 +56,10 @@ interface AppVersionInfo {
   display_version: string;
 }
 
+interface InitializeVaultResult {
+  recovery_key: string;
+}
+
 const NOTE_SAVE_DEBOUNCE_MS = 400;
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -109,6 +113,12 @@ function App() {
   const [isVaultInitialized, setIsVaultInitialized] = useState(false);
   const [isVaultUnlocked, setIsVaultUnlocked] = useState(false);
   const [vaultPassword, setVaultPassword] = useState("");
+  const [wipeVaultConfirm, setWipeVaultConfirm] = useState(false);
+  const [recoveryKeyReveal, setRecoveryKeyReveal] = useState<string | null>(null);
+  const [recoveryAck, setRecoveryAck] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryKeyInput, setRecoveryKeyInput] = useState("");
+  const [newVaultPassword, setNewVaultPassword] = useState("");
   const [secretMetadata, setSecretMetadata] = useState<SecretMeta[]>([]);
   const [revealedIndex, setRevealedIndex] = useState<number | null>(null);
   const [revealedValue, setRevealedValue] = useState("");
@@ -129,6 +139,7 @@ function App() {
   const [showLineNumbers, setShowLineNumbers] = useState(true);
   const [closePromptOpen, setClosePromptOpen] = useState(false);
   const pendingWindowClose = useRef(false);
+  const vaultStartupShown = useRef(false);
   const quittingRef = useRef(false);
   const settingsReady = useRef(false);
 
@@ -364,6 +375,15 @@ function App() {
   };
 
   const checkVaultStatus = async () => {
+    try {
+      const startupError = await invoke<string | null>("vault_startup_error");
+      if (startupError && !vaultStartupShown.current) {
+        vaultStartupShown.current = true;
+        showAppMessage(startupError);
+      }
+    } catch (e) {
+      console.error(e);
+    }
     try {
       const initialized = await invoke<boolean>("is_vault_initialized");
       const unlocked = await invoke<boolean>("is_vault_unlocked");
@@ -1146,17 +1166,37 @@ function App() {
   }, [editorContent, editorView, showLineNumbers]);
 
   // --- Secure Vault-X Database Operations ---
-  const handleInitVault = async () => {
+  const handleInitVault = async (wipeExisting = false) => {
     if (!vaultPassword) return;
     try {
-      await invoke("initialize_vault", { password: vaultPassword });
+      const result = await invoke<InitializeVaultResult>("initialize_vault", {
+        password: vaultPassword,
+        wipeExisting,
+      });
+      if (!result?.recovery_key) {
+        setIsVaultInitialized(true);
+        showAppMessage("Failed to initialize: recovery key was not returned.");
+        return;
+      }
+      setRecoveryKeyReveal(result.recovery_key);
+      setRecoveryAck(false);
+      setRecoveryMode(false);
       setIsVaultInitialized(true);
       setIsVaultUnlocked(true);
       setVaultPassword("");
       clearRevealedSecret();
-      await loadSecretMetadata();
+      try {
+        await loadSecretMetadata();
+      } catch (e: unknown) {
+        showAppMessage("Vault created. Could not load secrets: " + invokeErrorMessage(e));
+      }
     } catch (e: unknown) {
-      showAppMessage("Failed to initialize: " + invokeErrorMessage(e));
+      const message = invokeErrorMessage(e);
+      if (!wipeExisting && message.includes("left without its config")) {
+        setWipeVaultConfirm(true);
+        return;
+      }
+      showAppMessage("Failed to initialize: " + message);
     }
   };
 
@@ -1173,10 +1213,44 @@ function App() {
     }
   };
 
+  const clearRecoveryForm = () => {
+    setRecoveryMode(false);
+    setRecoveryKeyInput("");
+    setNewVaultPassword("");
+  };
+
+  const handleRecoverVault = async () => {
+    if (!recoveryKeyInput || !newVaultPassword) return;
+    try {
+      await invoke("recover_vault", {
+        recoveryKey: recoveryKeyInput,
+        newPassword: newVaultPassword,
+      });
+      clearRecoveryForm();
+      setIsVaultUnlocked(true);
+      setVaultPassword("");
+      clearRevealedSecret();
+      await loadSecretMetadata();
+    } catch (e: unknown) {
+      showAppMessage(invokeErrorMessage(e));
+    }
+  };
+
+  const handleCopyRecoveryKey = async () => {
+    if (!recoveryKeyReveal) return;
+    try {
+      await invoke("copy_text_to_clipboard", { text: recoveryKeyReveal });
+      showAppMessage("Recovery key copied.");
+    } catch (e: unknown) {
+      showAppMessage("Copy failed: " + invokeErrorMessage(e));
+    }
+  };
+
   const handleLockVault = async () => {
     await invoke("lock_vault");
     setIsVaultUnlocked(false);
     setVaultPassword("");
+    clearRecoveryForm();
     setSecretMetadata([]);
     clearRevealedSecret();
   };
@@ -1385,34 +1459,89 @@ function App() {
                     : "Initialize a new secure AES-256 vault by setting a master key password."
                   }
                 </p>
-                <div className="vault-input-group">
-                  <input
-                    type="password"
-                    className="vault-password-input"
-                    placeholder="Enter Master Password"
-                    value={vaultPassword}
-                    onChange={(e) => setVaultPassword(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        isVaultInitialized ? handleUnlockVault() : handleInitVault();
+                {isVaultInitialized && recoveryMode ? (
+                  <div className="vault-input-group recovery-fields">
+                    <input
+                      type="text"
+                      className="vault-password-input recovery-key-input"
+                      placeholder="Recovery key"
+                      value={recoveryKeyInput}
+                      spellCheck={false}
+                      autoComplete="off"
+                      autoCapitalize="off"
+                      onChange={(e) => setRecoveryKeyInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleRecoverVault();
+                      }}
+                    />
+                    <input
+                      type="password"
+                      className="vault-password-input"
+                      placeholder="New master password"
+                      value={newVaultPassword}
+                      autoComplete="new-password"
+                      onChange={(e) => setNewVaultPassword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleRecoverVault();
+                      }}
+                    />
+                    <button
+                      className="action-btn accent"
+                      style={{ padding: "10px", justifyContent: "center" }}
+                      onClick={() => void handleRecoverVault()}
+                    >
+                      Set new password
+                    </button>
+                    <button
+                      type="button"
+                      className="vault-text-btn"
+                      onClick={clearRecoveryForm}
+                    >
+                      Back
+                    </button>
+                  </div>
+                ) : (
+                  <div className="vault-input-group">
+                    <input
+                      type="password"
+                      className="vault-password-input"
+                      placeholder="Enter Master Password"
+                      value={vaultPassword}
+                      onChange={(e) => setVaultPassword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          isVaultInitialized ? handleUnlockVault() : handleInitVault();
+                        }
+                      }}
+                    />
+                    <button
+                      className="action-btn accent has-tooltip"
+                      style={{ padding: "10px", justifyContent: "center" }}
+                      data-tooltip={
+                        isVaultInitialized
+                          ? "Unlock your encrypted secrets with your master password"
+                          : "Create a new encrypted vault with a master password"
                       }
-                    }}
-                  />
-                  <button
-                    className="action-btn accent has-tooltip"
-                    style={{ padding: "10px", justifyContent: "center" }}
-                    data-tooltip={
-                      isVaultInitialized
-                        ? "Unlock your encrypted secrets with your master password"
-                        : "Create a new encrypted vault with a master password"
-                    }
-                    onClick={() =>
-                      isVaultInitialized ? handleUnlockVault() : handleInitVault()
-                    }
-                  >
-                    {isVaultInitialized ? "Unlock Vault" : "Initialize Vault"}
-                  </button>
-                </div>
+                      onClick={() =>
+                        isVaultInitialized ? handleUnlockVault() : handleInitVault()
+                      }
+                    >
+                      {isVaultInitialized ? "Unlock Vault" : "Initialize Vault"}
+                    </button>
+                    {isVaultInitialized && (
+                      <button
+                        type="button"
+                        className="vault-text-btn"
+                        onClick={() => {
+                          setVaultPassword("");
+                          setRecoveryMode(true);
+                        }}
+                      >
+                        Use recovery key
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -1851,10 +1980,70 @@ function App() {
       {isLinux && (
         <HelpDialog open={showHelp} onClose={() => setShowHelp(false)} />
       )}
+      {recoveryKeyReveal && (
+        <div
+          className="overlay-backdrop recovery-key-gate"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="recovery-key-title"
+        >
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title" id="recovery-key-title">
+                Save your recovery key
+              </h3>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: "13px", lineHeight: 1.5, marginBottom: "12px" }}>
+                This key is shown once. Store it somewhere safe. You can use it to set a new
+                master password if you forget this one.
+              </p>
+              <div className="recovery-key-value">{recoveryKeyReveal}</div>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
+                <button type="button" className="action-btn" onClick={() => void handleCopyRecoveryKey()}>
+                  Copy
+                </button>
+              </div>
+              <label className="settings-toggle-row" style={{ marginTop: "16px" }}>
+                <input
+                  type="checkbox"
+                  checked={recoveryAck}
+                  onChange={(e) => setRecoveryAck(e.target.checked)}
+                />
+                <span>I saved this recovery key</span>
+              </label>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "16px" }}>
+                <button
+                  type="button"
+                  className="action-btn accent"
+                  disabled={!recoveryAck}
+                  onClick={() => {
+                    setRecoveryKeyReveal(null);
+                    setRecoveryAck(false);
+                  }}
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <AppMessageDialog
         open={appMessage !== null}
         message={appMessage ?? ""}
         onClose={() => setAppMessage(null)}
+      />
+      <AppMessageDialog
+        open={wipeVaultConfirm}
+        title="Destroy leftover vault file?"
+        message="An encrypted vault file is still on disk without its config. Continuing destroys that leftover encrypted file and creates a new empty vault. This cannot be undone."
+        confirmLabel="Destroy encrypted file"
+        onConfirm={() => {
+          setWipeVaultConfirm(false);
+          void handleInitVault(true);
+        }}
+        onClose={() => setWipeVaultConfirm(false)}
       />
       {closePromptOpen && (
         <UnsavedChangesModal

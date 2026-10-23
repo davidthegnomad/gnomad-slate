@@ -14,6 +14,7 @@ pub mod menu;
 pub mod pasteboard_macos;
 pub mod shortcuts;
 pub mod unlock_limiter;
+mod vault_commit;
 pub mod vault_session;
 
 use arboard::Clipboard;
@@ -67,8 +68,12 @@ fn get_app_version_info() -> AppVersionInfo {
     }
 }
 
+fn vault_dir() -> std::path::PathBuf {
+    filesystem::get_slate_dir()
+}
+
 fn vault_file_path() -> std::path::PathBuf {
-    filesystem::get_slate_dir().join("vault.enc")
+    vault_dir().join("vault.enc")
 }
 
 fn write_encrypted_vault(data: &[u8]) -> Result<(), String> {
@@ -209,63 +214,68 @@ fn is_vault_initialized() -> bool {
     biometrics::is_vault_initialized()
 }
 
+static VAULT_WRITE_LOCK: Mutex<()> = Mutex::new(());
+static VAULT_STARTUP_ERROR: Mutex<Option<String>> = Mutex::new(None);
+
+fn record_vault_startup(result: Result<vault_commit::Reconcile, String>) {
+    let message = match result {
+        Ok(vault_commit::Reconcile::Done) => None,
+        Ok(vault_commit::Reconcile::PendingMismatch(message)) => Some(message),
+        Err(message) => Some(message),
+    };
+    if let Some(message) = message.as_ref() {
+        tracing::error!("{message}");
+    }
+    if let Ok(mut slot) = VAULT_STARTUP_ERROR.lock() {
+        *slot = message;
+    }
+}
+
+fn vault_write_lock() -> Result<std::sync::MutexGuard<'static, ()>, String> {
+    VAULT_WRITE_LOCK
+        .lock()
+        .map_err(|_| "Vault write lock poisoned".to_string())
+}
+
 pub(crate) fn vault_is_unlocked(state: &AppState) -> bool {
     vault_session::is_unlocked(&state.vault_session)
 }
 
-pub(crate) fn initialize_vault_with(password: &str, state: &AppState) -> Result<(), String> {
-    biometrics::validate_master_password(password)?;
-    biometrics::set_master_password(password)?;
-    vault_session::open_session_with_json(&state.vault_session, password, b"[]")?;
-    persist_vault(state)?;
-    if let Ok(mut limiter) = state.unlock_limiter.lock() {
-        limiter.record_success();
-    }
-    Ok(())
+pub(crate) fn initialize_vault_with(
+    password: &str,
+    wipe_existing: bool,
+    state: &AppState,
+) -> Result<String, String> {
+    let _write_guard = vault_write_lock()?;
+    let created = vault_commit::initialize_vault_in(&vault_dir(), password, wipe_existing, state)?;
+    Ok(created.recovery_key)
 }
 
 pub(crate) fn unlock_vault_with(password: &str, state: &AppState) -> Result<(), String> {
-    {
-        let mut limiter = state
-            .unlock_limiter
-            .lock()
-            .map_err(|_| "Rate limiter lock poisoned".to_string())?;
-        limiter.check_allowed()?;
-    }
+    let _write_guard = vault_write_lock()?;
+    vault_commit::unlock_vault_in(&vault_dir(), password, state)
+}
 
-    if !biometrics::verify_master_password(&password)? {
-        if let Ok(mut limiter) = state.unlock_limiter.lock() {
-            limiter.record_failure();
-        }
-        return Err("Invalid password".to_string());
-    }
+pub(crate) fn recover_vault_with(
+    recovery_key: &str,
+    new_password: &str,
+    state: &AppState,
+) -> Result<(), String> {
+    let _write_guard = vault_write_lock()?;
+    vault_commit::recover_vault_in(&vault_dir(), recovery_key, new_password, state)
+}
 
-    let vault_file = vault_file_path();
-    let encrypted_data = if vault_file.exists() {
-        std::fs::read(&vault_file).map_err(|e| format!("Failed to read secure vault: {}", e))?
-    } else {
-        Vec::new()
-    };
+#[tauri::command]
+fn vault_startup_error() -> Option<String> {
+    VAULT_STARTUP_ERROR
+        .lock()
+        .ok()
+        .and_then(|guard| guard.clone())
+}
 
-    let decrypted_bytes = if encrypted_data.is_empty() {
-        b"[]".to_vec()
-    } else {
-        crypto::decrypt_vault(&encrypted_data, &password)?
-    };
-
-    let was_legacy = !encrypted_data.is_empty() && crypto::is_legacy_vault_format(&encrypted_data);
-
-    vault_session::open_session_with_json(&state.vault_session, password, &decrypted_bytes)?;
-
-    if was_legacy {
-        persist_vault(state)?;
-    }
-
-    if let Ok(mut limiter) = state.unlock_limiter.lock() {
-        limiter.record_success();
-    }
-
-    Ok(())
+#[derive(Serialize)]
+struct InitializeVaultResult {
+    recovery_key: String,
 }
 
 #[tauri::command]
@@ -274,13 +284,27 @@ fn is_vault_unlocked(state: tauri::State<AppState>) -> bool {
 }
 
 #[tauri::command]
-fn initialize_vault(password: String, state: tauri::State<AppState>) -> Result<(), String> {
-    initialize_vault_with(&password, &state)
+fn initialize_vault(
+    password: String,
+    wipe_existing: Option<bool>,
+    state: tauri::State<AppState>,
+) -> Result<InitializeVaultResult, String> {
+    let recovery_key = initialize_vault_with(&password, wipe_existing.unwrap_or(false), &state)?;
+    Ok(InitializeVaultResult { recovery_key })
 }
 
 #[tauri::command]
 fn unlock_vault(password: String, state: tauri::State<AppState>) -> Result<(), String> {
     unlock_vault_with(&password, &state)
+}
+
+#[tauri::command]
+fn recover_vault(
+    recovery_key: String,
+    new_password: String,
+    state: tauri::State<AppState>,
+) -> Result<(), String> {
+    recover_vault_with(&recovery_key, &new_password, &state)
 }
 
 #[tauri::command]
@@ -491,6 +515,7 @@ fn attach_window_close_handler(_window: &tauri::WebviewWindow) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     logging::init();
+    record_vault_startup(vault_commit::reconcile_vault_commit(&vault_dir()));
 
     let clipboard_history = Arc::new(Mutex::new(ClipboardHistory::new(15)));
     let clipboard_filter_enabled = Arc::new(Mutex::new(true));
@@ -562,8 +587,10 @@ pub fn run() {
             archive_notes,
             is_vault_initialized,
             is_vault_unlocked,
+            vault_startup_error,
             initialize_vault,
             unlock_vault,
+            recover_vault,
             lock_vault,
             list_secret_metadata,
             reveal_secret_value,

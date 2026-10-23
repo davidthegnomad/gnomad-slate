@@ -95,6 +95,8 @@ POST /v1/vault/init
 POST /v1/vault/unlock
 { "password": "..." }
 
+`POST /v1/vault/init` returns `{ "unlocked": true, "recovery_key": "..." }` once. Store that key. It is the only copy.
+
 POST /v1/vault/secrets
 { "name": "...", "path": "...", "value": "..." }
 

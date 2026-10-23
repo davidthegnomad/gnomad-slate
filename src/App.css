@@ -346,6 +346,13 @@ body {
   box-shadow: 0 0 12px var(--accent-glow);
 }
 
+.action-btn:disabled,
+.action-btn:disabled:hover {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .editor-body {
   flex: 1;
   display: flex;
@@ -667,6 +674,54 @@ body {
 .vault-password-input:focus {
   border-color: var(--accent-color);
   box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.vault-input-group.recovery-fields {
+  width: 340px;
+}
+
+.vault-password-input.recovery-key-input {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.vault-text-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-cyan);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.vault-text-btn:hover {
+  text-decoration: underline;
+}
+
+.recovery-key-gate {
+  z-index: 140;
+  align-items: center;
+  padding-top: 0;
+}
+
+.app-message-layer {
+  z-index: 160;
+}
+
+.recovery-key-value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  text-align: center;
+  user-select: text;
+  -webkit-user-select: text;
+  padding: 14px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
 }
 
 /* Vault Credentials Registry styling */

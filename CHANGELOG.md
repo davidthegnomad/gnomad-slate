@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 
 ---
 
+## [2.1.0-beta.6] — October 2026
+
+### Added
+
+- Vault-X one-time recovery key. It is shown once when a vault is created, and it can set a new master password without wiping secrets.
+
+### Fixed
+
+- A crash during password reset can no longer leave `vault.enc` and `vault_config.json` on different keys
+- Setup refuses to overwrite a leftover `vault.enc` unless the wipe is confirmed
+- Unlock and recover fail when the encrypted vault file is missing, instead of saving an empty vault
+
+---
+
 ## [2.1.0-beta.5] — October 2026
 
 ### Added
